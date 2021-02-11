@@ -141,6 +141,13 @@ class XMLInfo:
                     if int(c.getAttribute('Id')) not in chiplist:
                         m.removeChild(c)
 
+
+    def keep_only_modules_by_modulename(self, modulenames):
+        for m in self.document.getElementsByTagName('Hybrid'):
+            ch = [n for n in m.childNodes if n.nodeType is minidom.Node.ELEMENT_NODE and n.tagName == 'RD53'][0]
+            if not get_modulename_from_txtfilename(ch.getAttribute('configfile')) in modulenames:
+                        m.parentNode.removeChild(m)
+
     def keep_only_modules_by_moduleid(self, modulelist):
         for m in self.document.getElementsByTagName('Hybrid'):
             if int(m.getAttribute('Id')) not in modulelist:
