@@ -57,16 +57,20 @@ def main():
 
 
     # now run many BER tests
-    tap_settings = []
-    #for tap0 in ([80, 90] + range(100, 1000, 100) + [1023]):
-    for tap0 in [80, 90, 100]:
-        for tap1 in range(0, 100+1, 25):
-            #if tap1 > tap0: continue
-            for tap2 in range(0, 100+1, 25):
-                #if tap2 > tap0 or tap2 > tap1: continue
-                tap_settings.append((tap0, tap1, tap2))
-    run_ber_scan(modules=['mod7'], chips=[0], ring='R1', tap_settings=tap_settings)
-    # plot_ber_results(module=module_for_ber, chip=chip_for_ber, tap_settings=tap_settings)
+    # tap_settings = []
+    # for tap0 in [80, 90, 100]:
+    #     for tap1 in range(0, 100+1, 25):
+    #         for tap2 in range(0, 100+1, 25):
+    #             tap_settings.append((tap0, tap1, tap2))
+
+    modules_for_ber = ['mod7']
+    chips_for_ber = [0, 1]
+
+    tap_settings = [(500, 0, 0)]
+    # run_ber_scan(modules=modules_for_ber, chips=chips_for_ber, ring='R1', tap_settings=tap_settings)
+    for module in modules_for_ber:
+        for chip in chips_for_ber:
+            plot_ber_results(module=module, chip=chip, ring='R1', tap_settings=tap_settings)
 
 
 
@@ -90,7 +94,7 @@ def plot_ber_results(module, chip, tap_settings, groupby = 'TAP0'):
     xvalues = []
     yvalues = []
     for tap0, tap1, tap2 in sorted(tap_settings):
-        logfilename = os.path.join(logfolder, 'ber_%i_%i_%i.log' % (tap0, tap1, tap2))
+        logfilename = os.path.join(logfolder, 'ber_%s_%s_%i_%i_%i_%i.log' % (ring, module, chip, tap0, tap1, tap2))
         nframes = -1
         nber    = -1
 
@@ -170,7 +174,7 @@ def plot_ber_results(module, chip, tap_settings, groupby = 'TAP0'):
 
 
 
-        outfilename = os.path.join(plotfolder, 'BER_%s_%i.pdf' % (groupby, key))
+        outfilename = os.path.join(plotfolder, 'BER_%s_%s_%i_%s_%i.pdf' % (ring, module, chip, groupby, key))
         fig.savefig(outfilename)
         fig.savefig(outfilename.replace('.pdf', '.png'))
         plt.close(fig)
@@ -184,43 +188,45 @@ def plot_ber_results(module, chip, tap_settings, groupby = 'TAP0'):
 def run_ber_scan(modules, chips, ring, tap_settings=[], mode='time', value=10):
 
     # first, enable TAP1, TAP2
-    if ring == 'singleQuad':
-        if not len(modules) == 1: raise AttributeError('Trying to run BER in singleQuad mode with mode than one module')
-        module = modules[0]
-        xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_%s_%s_%s.xml' % (ring, module, 'ber'))
-        reset_singleQuad_xml_files(type='ber', modules=modules, chips = chips)
-        prepare_singleQuad_xml_files(type_name='ber', type_setting='scurve', modules=modules)
-    elif ring == 'R1' or ring == 'R3':
-        xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_disk%s_%s.xml' % (ring, 'ber'))
-        reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R1, ring)
 
-    xmlobject = XMLInfo(xmlfile_for_ber)
-    xmlobject.keep_only_modules_by_modulename(modules)
     for module in modules:
-        xmlobject.keep_only_chips_by_modulename(module, chips)
         for chip in chips:
+
+            if ring == 'singleQuad':
+                if not len(modules) == 1: raise AttributeError('Trying to run BER in singleQuad mode with mode than one module')
+                module = modules[0]
+                xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_%s_%s_%s.xml' % (ring, module, 'ber'))
+                reset_singleQuad_xml_files(type='ber', modules=modules, chips = chips)
+                prepare_singleQuad_xml_files(type_name='ber', type_setting='scurve', modules=modules)
+            elif ring == 'R1':
+                xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_disk%s_%s.xml' % (ring, 'ber'))
+                reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R1, ring)
+            elif ring == 'R3':
+                xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_disk%s_%s.xml' % (ring, 'ber'))
+            xmlobject = XMLInfo(xmlfile_for_ber)
+            print module, chip
+            xmlobject.keep_only_modules_by_modulename([module])
+            xmlobject.keep_only_chips_by_modulename(module, [chip])
             xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_CONFIG', '127')
 
-    # now, in a loop, set TAP values to scan through
-    for tap0, tap1, tap2 in tap_settings:
-        print(tap0, tap1, tap2)
-        for module in modules:
-            for chip in chips:
+            # now, in a loop, set TAP values to scan through
+            for tap0, tap1, tap2 in tap_settings:
+                print(tap0, tap1, tap2)
                 xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_TAP0_BIAS', str(tap0))
                 xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_TAP1_BIAS', str(tap1))
                 xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_TAP2_BIAS', str(tap2))
-        xmlobject.save_xml_as(xmlfile_for_ber)
+                xmlobject.save_xml_as(xmlfile_for_ber)
 
-        # assemble the OS command
-        if mode is 'time': tuningstepname = 'prbstime'
-        elif mode is 'frames': tuningstepname = 'prbsframes'
-        else: raise AttributeError('Function \'run_ber_scan()\' received invalid argument for \'mode\': %s. Must be \'time\' or \'frames\'' % mode)
-        command = 'CMSITminiDAQ -f %s -c %s %i 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(logfolder, 'ber_%s_%i_%i_%i.log' % (ring, tap0, tap1, tap2)))
+                # assemble the OS command
+                if mode is 'time': tuningstepname = 'prbstime'
+                elif mode is 'frames': tuningstepname = 'prbsframes'
+                else: raise AttributeError('Function \'run_ber_scan()\' received invalid argument for \'mode\': %s. Must be \'time\' or \'frames\'' % mode)
+                command = 'CMSITminiDAQ -f %s -c %s %i 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(logfolder, 'ber_%s_%s_%i_%i_%i_%i.log' % (ring, module, chip, tap0, tap1, tap2)))
 
-        # execute the OS command
-        print(command)
-        # os.system(command)
-        # time.sleep(2)
+                # execute the OS command
+                print(command)
+                # os.system(command)
+                # time.sleep(2)
 
 
 
