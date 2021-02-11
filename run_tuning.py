@@ -26,6 +26,17 @@ chiplist = [0, 1, 2, 3]
 modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'modT01', 'modT02', 'modT03', 'modT04']
 
 
+ids_and_chips_per_module_R1 = {
+    'mod4': (0, [0]),
+    'mod6': (2, [0]),
+    'mod7': (1, [0, 1, 2])
+}
+
+ids_and_chips_per_module_R3 = {
+    'mod7': (1, [3])
+}
+
+
 
 
 
@@ -43,6 +54,10 @@ modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'modT01', 'modT02', 'modT03', 'mod
 def main():
 
     reset_all_settings()
+    # reset_and_prepare_R1_xml_file('scurve', 'scurve', ids_and_chips_per_module_R1)
+    # reset_and_prepare_R1_xml_file('scurve', 'scurve', ids_and_chips_per_module_R1)
+    # reset_and_prepare_R1_xml_file('scurve', 'scurve', ids_and_chips_per_module_R1)
+    # reset_and_prepare_R1_xml_file('ber',    'scurve', ids_and_chips_per_module_R1)
 
 
     # now run many BER tests
@@ -56,8 +71,8 @@ def main():
             for tap2 in range(0, 100+1, 25):
                 #if tap2 > tap0 or tap2 > tap1: continue
                 tap_settings.append((tap0, tap1, tap2))
-    run_ber_scan(module=module_for_ber, chip=chip_for_ber, tap_settings=tap_settings)
-    plot_ber_results(module=module_for_ber, chip=chip_for_ber, tap_settings=tap_settings)
+    # run_ber_scan(module=module_for_ber, chip=chip_for_ber, tap_settings=tap_settings)
+    # plot_ber_results(module=module_for_ber, chip=chip_for_ber, tap_settings=tap_settings)
 
 
 
@@ -210,6 +225,10 @@ def reset_all_settings():
     for type in daqsettings_per_xmltype:
         reset_singleQuad_xml_files(type=type, modules=modulelist)
         prepare_singleQuad_xml_files(type_name=type, type_setting=type, modules=modulelist)
+        reset_and_prepare_Ring_xml_file(type, type, ids_and_chips_per_module_R1, 1)
+        reset_and_prepare_Ring_xml_file(type, type, ids_and_chips_per_module_R3, 3)
+    reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R1, 1)
+    reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R3, 3)
     print('--> Reset all xml and txt settings.')
 
 
@@ -232,6 +251,50 @@ def reset_singleQuad_xml_files(type, modules=modulelist, chips=chiplist):
     for module in modules:
         targetname = os.path.join(xmlfolder,'CMSIT_singleQuad_%s_%s.xml' % (module, type))
         xmlobject.save_xml_as(targetname)
+
+
+
+
+def reset_and_prepare_Ring_xml_file(type_name, type_setting, ids_and_chips_per_module, ring):
+
+    xmlobject = XMLInfo(xmlfile_blueprint)
+
+    for setting in daqsettings_per_xmltype[type_setting]:
+        xmlobject.set_daq_settings(setting, daqsettings_per_xmltype[type_setting][setting])
+
+    # set up all modules
+    moduleids = []
+    for mod in ids_and_chips_per_module:
+        moduleids.append(ids_and_chips_per_module[mod][0])
+    for id in moduleids:
+        if id == 0: continue
+        xmlobject.copy_module_by_moduleid(0, id)
+        xmlobject.set_txtfilepath_by_moduleid(id, txtfolder)
+    xmlobject.keep_only_modules_by_moduleid(moduleids)
+
+    # set up chips per module
+    for module in ids_and_chips_per_module:
+        id = ids_and_chips_per_module[module][0]
+        chips = ids_and_chips_per_module[module][1]
+
+        # first create all chips, then delete the unwanted ones
+        for chip in [0,1,2,3]:
+            if not chip == 0:
+                xmlobject.copy_chip_by_moduleid(id, 0, chip)
+            if ring == 1:
+                xmlobject.set_chip_attribute_by_moduleid(id, chip, 'Lane', str(chip))
+            elif ring == 3:
+                xmlobject.set_chip_attribute_by_moduleid(id, chip, 'Lane', 0)
+            else: raise AttributeError('invalid ring specified: %s' % (str(ring)))
+            xmlobject.set_chip_attribute_by_moduleid(id, chip, 'configfile', 'CMSIT_RD53_%s_chip%i_default.txt' % (module, chip))
+            if chip in chip_settings[module]:
+                settings = chip_settings[module][chip]
+                for setting in settings:
+                    xmlobject.set_chip_setting_by_modulename(module, chip, setting, settings[setting])
+        xmlobject.keep_only_chips_by_moduleid(id, chips)
+
+    targetname = os.path.join(xmlfolder,'CMSIT_diskR%s_%s.xml' % (str(ring), type_name))
+    xmlobject.save_xml_as(targetname)
 
 
 

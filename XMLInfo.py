@@ -109,6 +109,22 @@ class XMLInfo:
                         return
 
 
+    def copy_module_by_moduleid(self, sourcemoduleID, targetmoduleID):
+
+        #check if target chip exists, then throw error
+        for m in self.document.getElementsByTagName('Hybrid'):
+            if m.getAttribute('Id') == str(targetmoduleID):
+                raise AttributeError('In copy_module_by_moduleid(): tried to generate module with ID that already exists. Abort.')
+
+        for m in self.document.getElementsByTagName('Hybrid'):
+            if m.getAttribute('Id') == str(sourcemoduleID):
+                newmodule = m.cloneNode(deep=True)
+                newmodule.setAttribute('Id', str(targetmoduleID))
+                m.parentNode.appendChild(newmodule)
+                return
+        raise AttributeError('In copy_module_by_moduleid(): did not find source module ID %s' % (str(sourcemoduleID)))
+
+
     def keep_only_chips_by_moduleid(self, moduleID, chiplist):
         for m in self.document.getElementsByTagName('Hybrid'):
             if m.getAttribute('Id') == str(moduleID):
@@ -124,6 +140,11 @@ class XMLInfo:
                 for c in [n for n in m.childNodes if n.nodeType is minidom.Node.ELEMENT_NODE and n.tagName == 'RD53']:
                     if int(c.getAttribute('Id')) not in chiplist:
                         m.removeChild(c)
+
+    def keep_only_modules_by_moduleid(self, modulelist):
+        for m in self.document.getElementsByTagName('Hybrid'):
+            if int(m.getAttribute('Id')) not in modulelist:
+                m.parentNode.removeChild(m)
 
 
 
