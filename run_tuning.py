@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 import os, re
-import time
+import time, math
 import numpy as np
 import shutil as sh
 import matplotlib
@@ -27,9 +27,7 @@ modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'modT01', 'modT02', 'modT03', 'mod
 
 
 ids_and_chips_per_module_R1 = {
-    'mod4': (0, [0]),
-    'mod6': (2, [0]),
-    'mod7': (1, [0, 1, 2])
+    'mod7': (1, [0])
 }
 
 ids_and_chips_per_module_R3 = {
@@ -57,20 +55,21 @@ def main():
 
 
     # now run many BER tests
-    # tap_settings = []
-    # for tap0 in [80, 90, 100]:
-    #     for tap1 in range(0, 100+1, 25):
-    #         for tap2 in range(0, 100+1, 25):
-    #             tap_settings.append((tap0, tap1, tap2))
+    tap_settings = []
+    for tap0 in [280, 300, 400]:
+    # for tap0 in [400]:
+        for tap1 in range(0, 100+1, 25):
+            for tap2 in range(0, 100+1, 25):
+                tap_settings.append((tap0, tap1, tap2))
 
     modules_for_ber = ['mod7']
-    chips_for_ber = [0, 1]
+    chips_for_ber   = [0]
+    positions       = ['1']
 
-    tap_settings = [(500, 0, 0)]
-    # run_ber_scan(modules=modules_for_ber, chips=chips_for_ber, ring='R1', tap_settings=tap_settings)
-    for module in modules_for_ber:
+    #run_ber_scan(modules=modules_for_ber, chips=chips_for_ber, ring='R1', positions=positions, tap_settings=tap_settings)
+    for moduleidx, module in enumerate(modules_for_ber):
         for chip in chips_for_ber:
-            plot_ber_results(module=module, chip=chip, ring='R1', tap_settings=tap_settings)
+            plot_ber_results(module=module, chip=chip, ring='R1', position=positions[moduleidx], tap_settings=tap_settings)
 
 
 
@@ -87,14 +86,14 @@ def main():
 
 
 
-def plot_ber_results(module, chip, tap_settings, groupby = 'TAP0'):
+def plot_ber_results(module, chip, ring, position, tap_settings, groupby = 'TAP0'):
 
     # group by tap0
     tapdict = {}
     xvalues = []
     yvalues = []
     for tap0, tap1, tap2 in sorted(tap_settings):
-        logfilename = os.path.join(logfolder, 'ber_%s_%s_%i_%i_%i_%i.log' % (ring, module, chip, tap0, tap1, tap2))
+        logfilename = os.path.join(logfolder, 'ber_%s_%s_%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(position), tap0, tap1, tap2))
         nframes = -1
         nber    = -1
 
@@ -135,6 +134,7 @@ def plot_ber_results(module, chip, tap_settings, groupby = 'TAP0'):
         for(key1, key2) in sorted(tapdict[key].keys()):
             nframes = tapdict[key][(key1, key2)][0]
             ber_abs = tapdict[key][(key1, key2)][1]
+            print key1, key2, ber_abs
 
             if nframes <= 0 or ber_abs < 0:
                 ber_rel = -1
@@ -148,7 +148,16 @@ def plot_ber_results(module, chip, tap_settings, groupby = 'TAP0'):
         print ber_arrays[key]
 
         fig, ax = plt.subplots(figsize=(12,4))
-        im = ax.imshow(ber_arrays[key], aspect='auto', origin='lower', cmap=plt.cm.get_cmap('Blues', 100))
+        print minvalue
+        z_max = 1E-5
+        cmap = plt.cm.get_cmap('Purples', 300)
+        # cmap.set_bad(color='green')
+        # masked_array = np.ma.masked_where(np.swapaxes(ber_arrays[key], 0, 1) == minvalue, np.swapaxes(ber_arrays[key], 0, 1))
+        # im = ax.imshow(masked_array, aspect='auto', origin='lower', vmin=minvalue, vmax=z_max, cmap=cmap, norm=matplotlib.colors.LogNorm())
+        im = ax.imshow(np.swapaxes(ber_arrays[key], 0, 1), aspect='auto', origin='lower', vmin=minvalue+1E-30, vmax=z_max, cmap=cmap, norm=matplotlib.colors.LogNorm())
+
+
+
         cbar = plt.colorbar(im)
         cbar.ax.set_ylabel('Bit error rate')
         xlabel = 'TAP1' if groupby == 'TAP0' else 'TAP0'
@@ -166,7 +175,12 @@ def plot_ber_results(module, chip, tap_settings, groupby = 'TAP0'):
         for i in range(len(xvalues)):
             for j in range(len(yvalues)):
                 val = ber_arrays[key][i,j]
-                if val > 0.6 * np.max(ber_arrays[key]):
+                print ber_arrays[key][i,j]
+                # if val > 5E-4 * np.max(ber_arrays[key]):
+                # print math.log10(val), math.log10(minvalue), math.log10(z_max), (math.log10(minvalue) - math.log10(z_max)), 0.5 * (math.log10(minvalue) - math.log10(z_max)) + math.log10(z_max), math.log10(val)
+                if val == minvalue:
+                    color = 'green'
+                elif math.log10(val) > 0.5 * (math.log10(minvalue) - math.log10(z_max)) + math.log10(z_max):
                     color = 'white'
                 else:
                     color = 'black'
@@ -174,7 +188,7 @@ def plot_ber_results(module, chip, tap_settings, groupby = 'TAP0'):
 
 
 
-        outfilename = os.path.join(plotfolder, 'BER_%s_%s_%i_%s_%i.pdf' % (ring, module, chip, groupby, key))
+        outfilename = os.path.join(plotfolder, 'BER_%s_%s_%i_pos%s_%s_%i.pdf' % (ring, module, chip, str(position), groupby, key))
         fig.savefig(outfilename)
         fig.savefig(outfilename.replace('.pdf', '.png'))
         plt.close(fig)
@@ -185,11 +199,11 @@ def plot_ber_results(module, chip, tap_settings, groupby = 'TAP0'):
 
 
 
-def run_ber_scan(modules, chips, ring, tap_settings=[], mode='time', value=10):
+def run_ber_scan(modules, chips, ring, positions, tap_settings=[], mode='time', value=10):
 
     # first, enable TAP1, TAP2
 
-    for module in modules:
+    for moduleidx, module in enumerate(modules):
         for chip in chips:
 
             if ring == 'singleQuad':
@@ -221,7 +235,7 @@ def run_ber_scan(modules, chips, ring, tap_settings=[], mode='time', value=10):
                 if mode is 'time': tuningstepname = 'prbstime'
                 elif mode is 'frames': tuningstepname = 'prbsframes'
                 else: raise AttributeError('Function \'run_ber_scan()\' received invalid argument for \'mode\': %s. Must be \'time\' or \'frames\'' % mode)
-                command = 'CMSITminiDAQ -f %s -c %s %i 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(logfolder, 'ber_%s_%s_%i_%i_%i_%i.log' % (ring, module, chip, tap0, tap1, tap2)))
+                command = 'CMSITminiDAQ -f %s -c %s %i 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(logfolder, 'ber_%s_%s_%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
 
                 # execute the OS command
                 print(command)
