@@ -3,3 +3,5 @@
 *.txt
 *.xml
 .DS_Store
+*.pdf
+*.png
