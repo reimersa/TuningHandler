@@ -16,10 +16,10 @@ xmlfolder = 'xml/'
 txtfolder = 'txt/'
 logfolder = 'log/'
 plotfolder = 'plots/'
-# xmlfile_blueprint = '/home/tepx/Desktop/Arne_fresh/Ph2_ACF/settings/CMSIT.xml'
-xmlfile_blueprint = 'xml/CMSIT.xml'
-# txtfile_blueprint = '/home/tepx/Desktop/Arne_fresh/Ph2_ACF/settings/RD53Files/CMSIT_RD53.txt'
-txtfile_blueprint = 'txt/CMSIT_RD53.txt'
+xmlfile_blueprint = '/home/uzh-tepx/Ph2_ACF/settings/CMSIT.xml'
+# xmlfile_blueprint = 'xml/CMSIT.xml'
+txtfile_blueprint = '/home/uzh-tepx/Ph2_ACF/settings/RD53Files/CMSIT_RD53.txt'
+#txtfile_blueprint = 'txt/CMSIT_RD53.txt'
 
 
 chiplist = [0, 1, 2, 3]
@@ -27,7 +27,8 @@ modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'modT01', 'modT02', 'modT03', 'mod
 
 
 ids_and_chips_per_module_R1 = {
-    'mod7': (1, [0])
+    'mod7': (1, [0, 1, 2])
+    #'mod4': (1, [0])
 }
 
 ids_and_chips_per_module_R3 = {
@@ -51,7 +52,7 @@ ids_and_chips_per_module_R3 = {
 
 def main():
 
-    # reset_all_settings()
+    reset_all_settings()
 
 
     # now run many BER tests
@@ -63,13 +64,13 @@ def main():
                 tap_settings.append((tap0, tap1, tap2))
 
     modules_for_ber = ['mod7']
-    chips_for_ber   = [0]
-    positions       = ['1']
-
-    #run_ber_scan(modules=modules_for_ber, chips=chips_for_ber, ring='R1', positions=positions, tap_settings=tap_settings)
-    for moduleidx, module in enumerate(modules_for_ber):
-        for chip in chips_for_ber:
-            plot_ber_results(module=module, chip=chip, ring='R1', position=positions[moduleidx], tap_settings=tap_settings)
+    chips_for_ber   = [0, 1, 2]
+    positions       = ['2']
+    
+    run_ber_scan(modules=modules_for_ber, chips=chips_for_ber, ring='R1', positions=positions, tap_settings=tap_settings)
+    #for moduleidx, module in enumerate(modules_for_ber):
+        #for chip in chips_for_ber:
+            #plot_ber_results(module=module, chip=chip, ring='R1', position=positions[moduleidx], tap_settings=tap_settings)
 
 
 
@@ -235,12 +236,12 @@ def run_ber_scan(modules, chips, ring, positions, tap_settings=[], mode='time', 
                 if mode is 'time': tuningstepname = 'prbstime'
                 elif mode is 'frames': tuningstepname = 'prbsframes'
                 else: raise AttributeError('Function \'run_ber_scan()\' received invalid argument for \'mode\': %s. Must be \'time\' or \'frames\'' % mode)
-                command = 'CMSITminiDAQ -f %s -c %s %i 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(logfolder, 'ber_%s_%s_%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
+                command = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(logfolder, 'ber_%s_%s_%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
 
                 # execute the OS command
                 print(command)
-                # os.system(command)
-                # time.sleep(2)
+                os.system(command)
+                time.sleep(2)
 
 
 
