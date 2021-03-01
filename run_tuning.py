@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+
 from XMLInfo import *
 from settings.typesettings import *
 from settings.chipsettings import *
@@ -27,7 +28,7 @@ modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'modT01', 'modT02', 'modT03', 'mod
 
 
 ids_and_chips_per_module_R1 = {
-    'mod7': (1, [0, 1, 2])
+    'mod7': (1, [0, 2])
     #'mod4': (1, [0])
 }
 
@@ -57,20 +58,23 @@ def main():
 
     # now run many BER tests
     tap_settings = []
-    for tap0 in [280, 300, 400]:
+#    for tap0 in [280, 300, 400]:
+    for tap0 in [600]:
     # for tap0 in [400]:
-        for tap1 in range(0, 100+1, 25):
-            for tap2 in range(0, 100+1, 25):
+        for tap1 in range(0, 100+1, 50):
+            for tap2 in range(0, 100+1, 50):
                 tap_settings.append((tap0, tap1, tap2))
 
     modules_for_ber = ['mod7']
-    chips_for_ber   = [0, 1, 2]
+    chips_for_ber   = [0]
     positions       = ['2']
     
-    run_ber_scan(modules=modules_for_ber, chips=chips_for_ber, ring='R1', positions=positions, tap_settings=tap_settings)
-    #for moduleidx, module in enumerate(modules_for_ber):
-        #for chip in chips_for_ber:
-            #plot_ber_results(module=module, chip=chip, ring='R1', position=positions[moduleidx], tap_settings=tap_settings)
+#    run_ber_scan(modules=modules_for_ber, chips=chips_for_ber, ring='R1', positions=positions, tap_settings=tap_settings, value=10)
+
+    for moduleidx, module in enumerate(modules_for_ber):
+        for chip in chips_for_ber:
+#            pass
+            plot_ber_results(module=module, chip=chip, ring='R1', position=positions[moduleidx], tap_settings=tap_settings)
 
 
 
@@ -129,9 +133,11 @@ def plot_ber_results(module, chip, ring, position, tap_settings, groupby = 'TAP0
             if not tap1 in yvalues: yvalues.append(tap1)
 
     #make numpy arrays
-    ber_arrays = {}
+    ber_and_minval_arrays = {}
+    minvalue_arrays = {}
     for key in tapdict.keys():
         ordered_list = []
+        minvalues = []
         for(key1, key2) in sorted(tapdict[key].keys()):
             nframes = tapdict[key][(key1, key2)][0]
             ber_abs = tapdict[key][(key1, key2)][1]
@@ -142,20 +148,17 @@ def plot_ber_results(module, chip, ring, position, tap_settings, groupby = 'TAP0
                 minvalue = -1
             else:
                 minvalue = np.float64(1)/np.float64(nframes)
-                ber_rel = max(minvalue, (np.float64(ber_abs) / np.float64(nframes)))
-            #ordered_list.append(tapdict[key][(key1, key2)][1])
-            ordered_list.append(ber_rel)
-        ber_arrays[key] = (np.array(ordered_list).reshape(len(xvalues), len(yvalues)))
-        print ber_arrays[key]
+                ber_rel = np.float64(max(minvalue, (np.float64(ber_abs) / np.float64(nframes))))
+            	print 'components: ', np.float64(ber_abs), np.float64(nframes), minvalue, np.float64(1), minvalue, ber_rel
+            	
+            ordered_list.append((ber_rel, minvalue))
+        ber_and_minval_arrays[key] = (np.array([tup[0] for tup in ordered_list], dtype=np.float64).reshape(len(xvalues), len(yvalues)), np.array([tup[1] for tup in ordered_list], dtype=np.float64).reshape(len(xvalues), len(yvalues)))
+        print ber_and_minval_arrays[key]
 
         fig, ax = plt.subplots(figsize=(12,4))
-        print minvalue
         z_max = 1E-5
         cmap = plt.cm.get_cmap('Purples', 300)
-        # cmap.set_bad(color='green')
-        # masked_array = np.ma.masked_where(np.swapaxes(ber_arrays[key], 0, 1) == minvalue, np.swapaxes(ber_arrays[key], 0, 1))
-        # im = ax.imshow(masked_array, aspect='auto', origin='lower', vmin=minvalue, vmax=z_max, cmap=cmap, norm=matplotlib.colors.LogNorm())
-        im = ax.imshow(np.swapaxes(ber_arrays[key], 0, 1), aspect='auto', origin='lower', vmin=minvalue+1E-30, vmax=z_max, cmap=cmap, norm=matplotlib.colors.LogNorm())
+        im = ax.imshow(np.swapaxes(ber_and_minval_arrays[key][0], 0, 1), aspect='auto', origin='lower', vmin=np.min(ber_and_minval_arrays[key][1])+1E-30, vmax=z_max, cmap=cmap, norm=matplotlib.colors.LogNorm())
 
 
 
@@ -175,10 +178,9 @@ def plot_ber_results(module, chip, ring, position, tap_settings, groupby = 'TAP0
 
         for i in range(len(xvalues)):
             for j in range(len(yvalues)):
-                val = ber_arrays[key][i,j]
-                print ber_arrays[key][i,j]
-                # if val > 5E-4 * np.max(ber_arrays[key]):
-                # print math.log10(val), math.log10(minvalue), math.log10(z_max), (math.log10(minvalue) - math.log10(z_max)), 0.5 * (math.log10(minvalue) - math.log10(z_max)) + math.log10(z_max), math.log10(val)
+                val = ber_and_minval_arrays[key][0][i,j]
+                minvalue = ber_and_minval_arrays[key][1][i,j]
+                print val, minvalue
                 if val == minvalue:
                     color = 'green'
                 elif math.log10(val) > 0.5 * (math.log10(minvalue) - math.log10(z_max)) + math.log10(z_max):
