@@ -98,7 +98,7 @@ def plot_ber_results(module, chip, ring, position, tap_settings, groupby = 'TAP0
     xvalues = []
     yvalues = []
     for tap0, tap1, tap2 in sorted(tap_settings):
-        logfilename = os.path.join(logfolder, 'ber_%s_%s_%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(position), tap0, tap1, tap2))
+        logfilename = os.path.join(logfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(position), tap0, tap1, tap2))
         nframes = -1
         nber    = -1
 
@@ -191,7 +191,7 @@ def plot_ber_results(module, chip, ring, position, tap_settings, groupby = 'TAP0
 
 
 
-        outfilename = os.path.join(plotfolder, 'BER_%s_%s_%i_pos%s_%s_%i.pdf' % (ring, module, chip, str(position), groupby, key))
+        outfilename = os.path.join(plotfolder, 'ber_%s_%s_chip%i_pos%s_%s_%i.pdf' % (ring, module, chip, str(position), groupby, key))
         fig.savefig(outfilename)
         fig.savefig(outfilename.replace('.pdf', '.png'))
         plt.close(fig)
@@ -238,7 +238,7 @@ def run_ber_scan(modules, chips, ring, positions, tap_settings=[], mode='time', 
                 if mode is 'time': tuningstepname = 'prbstime'
                 elif mode is 'frames': tuningstepname = 'prbsframes'
                 else: raise AttributeError('Function \'run_ber_scan()\' received invalid argument for \'mode\': %s. Must be \'time\' or \'frames\'' % mode)
-                command = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(logfolder, 'ber_%s_%s_%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
+                command = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(logfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
 
                 # execute the OS command
                 print(command)
