@@ -28,7 +28,8 @@ modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'modT01', 'modT02', 'modT03', 'mod
 
 
 ids_and_chips_per_module_R1 = {
-    'mod7': (1, [0, 2])
+#    'mod7': (1, [0, 2])
+    'mod6': (1, [0, 1, 2])
     #'mod4': (1, [0])
 }
 
@@ -53,28 +54,31 @@ ids_and_chips_per_module_R3 = {
 
 def main():
 
-    reset_all_settings()
+    #reset_all_settings()
 
 
     # now run many BER tests
     tap_settings = []
 #    for tap0 in [280, 300, 400]:
-    for tap0 in [600]:
-    # for tap0 in [400]:
-        for tap1 in range(0, 100+1, 50):
-            for tap2 in range(0, 100+1, 50):
+    for tap0 in [500]:
+    #for tap0 in [700]:
+        for tap1 in range(0, 00+1, 100):
+            for tap2 in range(0, 00+1, 100):
                 tap_settings.append((tap0, tap1, tap2))
 
-    modules_for_ber = ['mod7']
-    chips_for_ber   = [0]
-    positions       = ['2']
+    ring            = 'R1'
+    positions       = ['5']
+    modules_for_ber = ids_and_chips_per_module_R1.keys()
+    chips_per_module= {}
+    for mod in ids_and_chips_per_module_R1:
+    	chips_per_module[mod] = ids_and_chips_per_module_R1[mod][1]
     
-#    run_ber_scan(modules=modules_for_ber, chips=chips_for_ber, ring='R1', positions=positions, tap_settings=tap_settings, value=10)
+    #run_ber_scan(modules=modules_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings=tap_settings, value=5)
 
     for moduleidx, module in enumerate(modules_for_ber):
-        for chip in chips_for_ber:
-#            pass
-            plot_ber_results(module=module, chip=chip, ring='R1', position=positions[moduleidx], tap_settings=tap_settings)
+        for chip in chips_per_module[module]:
+            pass
+            plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings)
 
 
 
@@ -202,12 +206,12 @@ def plot_ber_results(module, chip, ring, position, tap_settings, groupby = 'TAP0
 
 
 
-def run_ber_scan(modules, chips, ring, positions, tap_settings=[], mode='time', value=10):
+def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings=[], mode='time', value=10):
 
     # first, enable TAP1, TAP2
 
     for moduleidx, module in enumerate(modules):
-        for chip in chips:
+        for chip in chips_per_module[module]:
 
             if ring == 'singleQuad':
                 if not len(modules) == 1: raise AttributeError('Trying to run BER in singleQuad mode with mode than one module')
@@ -238,11 +242,15 @@ def run_ber_scan(modules, chips, ring, positions, tap_settings=[], mode='time', 
                 if mode is 'time': tuningstepname = 'prbstime'
                 elif mode is 'frames': tuningstepname = 'prbsframes'
                 else: raise AttributeError('Function \'run_ber_scan()\' received invalid argument for \'mode\': %s. Must be \'time\' or \'frames\'' % mode)
-                command = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(logfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
+                command_p = 'CMSITminiDAQ -f %s p' % (xmlfile_for_ber)
+                command_ber = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(logfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
 
                 # execute the OS command
-                print(command)
-                os.system(command)
+                print(command_p)
+                os.system(command_p)
+                time.sleep(1)
+                print(command_ber)
+                os.system(command_ber)
                 time.sleep(2)
 
 
@@ -338,10 +346,12 @@ def prepare_singleQuad_xml_files(type_name, type_setting, modules=modulelist):
             xmlobject.set_chip_attribute_by_moduleid(1, chip, 'configfile', 'CMSIT_RD53_%s_chip%i_default.txt' % (module, chip))
 
         chip_settings_thismodule = chip_settings[module]
+        keepchips = []
         for chip in chip_settings_thismodule:
             settings = chip_settings_thismodule[chip]
             for setting in settings:
                 xmlobject.set_chip_setting_by_modulename(module, chip, setting, settings[setting])
+        xmlobject.keep_only_chips_by_modulename(module, chip_settings_thismodule.keys())
         xmlobject.save_xml_as(xmlfilename)
 
 

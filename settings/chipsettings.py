@@ -64,11 +64,6 @@ chip_settings = {
         'Vthreshold_LIN': '400',
         'VOLTAGE_TRIM_DIG': '16',
         'VOLTAGE_TRIM_ANA': '16'
-        },
-    3: {
-        'Vthreshold_LIN': '400',
-        'VOLTAGE_TRIM_DIG': '16',
-        'VOLTAGE_TRIM_ANA': '16'
         }
     },
 
@@ -82,17 +77,17 @@ chip_settings = {
     1: {
         'Vthreshold_LIN': '400',
         'VOLTAGE_TRIM_DIG': '25',
-        'VOLTAGE_TRIM_ANA': '16'
+        'VOLTAGE_TRIM_ANA': '15'
         },
     2: {
         'Vthreshold_LIN': '400',
-        'VOLTAGE_TRIM_DIG': '20',
-        'VOLTAGE_TRIM_ANA': '20'
+        'VOLTAGE_TRIM_DIG': '23',
+        'VOLTAGE_TRIM_ANA': '22'
         },
     3: {
         'Vthreshold_LIN': '400',
-        'VOLTAGE_TRIM_DIG': '16',
-        'VOLTAGE_TRIM_ANA': '16'
+        'VOLTAGE_TRIM_DIG': '20',
+        'VOLTAGE_TRIM_ANA': '18'
         }
     },
 
@@ -100,18 +95,18 @@ chip_settings = {
 'modT01': {
     0: {
         'Vthreshold_LIN': '400',
-        'VOLTAGE_TRIM_DIG': '16',
-        'VOLTAGE_TRIM_ANA': '16'
+        'VOLTAGE_TRIM_DIG': '31',
+        'VOLTAGE_TRIM_ANA': '18'
         },
     1: {
         'Vthreshold_LIN': '400',
-        'VOLTAGE_TRIM_DIG': '16',
-        'VOLTAGE_TRIM_ANA': '16'
+        'VOLTAGE_TRIM_DIG': '26',
+        'VOLTAGE_TRIM_ANA': '14'
         },
     2: {
         'Vthreshold_LIN': '400',
-        'VOLTAGE_TRIM_DIG': '16',
-        'VOLTAGE_TRIM_ANA': '16'
+        'VOLTAGE_TRIM_DIG': '28',
+        'VOLTAGE_TRIM_ANA': '12'
         },
     3: {
         'Vthreshold_LIN': '400',
