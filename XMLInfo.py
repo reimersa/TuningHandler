@@ -1,7 +1,7 @@
 import os, sys
 import xml.dom.minidom as minidom
 import subprocess
-import StringIO
+#import StringIO
 import xml.sax
 from copy import deepcopy
 
@@ -12,7 +12,7 @@ class XMLInfo:
 
 
     def print_module_children_attributes(self):
-        for e in [n for n in self.document.getElementsByTagName('Hybrid')[0].childNodes if n.nodeType is minidom.Node.ELEMENT_NODE]: print e.attributes.items()
+        for e in [n for n in self.document.getElementsByTagName('Hybrid')[0].childNodes if n.nodeType is minidom.Node.ELEMENT_NODE]: print(e.attributes.items())
 
     def save_xml_as(self, outfilename):
         with open(outfilename, 'wr') as f:
@@ -175,7 +175,7 @@ class XMLInfo:
     def print_daq_settings(self):
         settings_mother = [n for n in self.document.childNodes[0].childNodes if n.nodeType is minidom.Node.ELEMENT_NODE and n.tagName == 'Settings'][0]
         for setting in [n for n in settings_mother.childNodes if n.nodeType is minidom.Node.ELEMENT_NODE and n.tagName == 'Setting']:
-            print setting.getAttribute('name'), setting.childNodes[0].data
+            print(setting.getAttribute('name'), setting.childNodes[0].data)
 
 
 

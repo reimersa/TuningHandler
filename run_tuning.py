@@ -71,7 +71,7 @@ def main():
     modules_for_ber = ids_and_chips_per_module_R1.keys()
     chips_per_module= {}
     for mod in ids_and_chips_per_module_R1:
-    	chips_per_module[mod] = ids_and_chips_per_module_R1[mod][1]
+        chips_per_module[mod] = ids_and_chips_per_module_R1[mod][1]
     
     #run_ber_scan(modules=modules_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings=tap_settings, value=5)
 
@@ -88,10 +88,44 @@ def main():
 
 
 
+def get_results_from_logfile( fname ):
 
+    nframes = -1
+    nber    = -1
+    with open( fname, 'r') as f:
+        lines = f.readlines()
+        for l in lines:
+            l = escape_ansi(l)
+            if 'Final number of PRBS frames sent:' in l:
+                nframes = int(l.split(' ')[-1])
+            elif 'Final BER counter:' in l:
+                nber = int(l.split(' ')[-1])
+    return (nframes, nber)
 
+def get_settings_from_logfile( fname ):
+    basename_no_ext = os.path.splitext(os.path.basename( fname ))[0]
+    fields = basename_no_ext.split("_")
 
+    #index from the back so things can be added to the front
+    settings = {
+        'tap2' : fields[-1],    
+        'tap1' : fields[-2],
+        'tap0' : fields[-3],
+        'pos'  : fields[-4].strip('pos'),
+        'chip' : fields[-5].strip('chip'),
+        'module' : fields[-6],
+        'ring'   : fields[-7]
+        }
+    return settings
 
+def get_all_info_from_logfile( fname ):
+
+    all_info = get_settings_from_logfile( fname )
+    nframes, nber = get_results_from_logfile( fname )
+    all_info.update( { 'nframes' : nframes, 'nber' : nber} )
+
+    return all_info
+    
 
 
 
@@ -103,17 +137,8 @@ def plot_ber_results(module, chip, ring, position, tap_settings, groupby = 'TAP0
     yvalues = []
     for tap0, tap1, tap2 in sorted(tap_settings):
         logfilename = os.path.join(logfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(position), tap0, tap1, tap2))
-        nframes = -1
-        nber    = -1
+        nframes, nber = get_results_from_logfile( logfilename )
 
-        with open(logfilename, 'r') as f:
-            lines = f.readlines()
-            for l in lines:
-                l = escape_ansi(l)
-                if 'Final number of PRBS frames sent:' in l:
-                    nframes = int(l.split(' ')[-1])
-                elif 'Final BER counter:' in l:
-                    nber = int(l.split(' ')[-1])
         if groupby == 'TAP0':
             if not tap0 in tapdict.keys():
                 tapdict[tap0] = {(tap1, tap2): (nframes, nber)}
@@ -145,7 +170,7 @@ def plot_ber_results(module, chip, ring, position, tap_settings, groupby = 'TAP0
         for(key1, key2) in sorted(tapdict[key].keys()):
             nframes = tapdict[key][(key1, key2)][0]
             ber_abs = tapdict[key][(key1, key2)][1]
-            print key1, key2, ber_abs
+            print( key1, key2, ber_abs)
 
             if nframes <= 0 or ber_abs < 0:
                 ber_rel = -1
@@ -153,11 +178,11 @@ def plot_ber_results(module, chip, ring, position, tap_settings, groupby = 'TAP0
             else:
                 minvalue = np.float64(1)/np.float64(nframes)
                 ber_rel = np.float64(max(minvalue, (np.float64(ber_abs) / np.float64(nframes))))
-            	print 'components: ', np.float64(ber_abs), np.float64(nframes), minvalue, np.float64(1), minvalue, ber_rel
-            	
+                print('components: ', np.float64(ber_abs), np.float64(nframes), minvalue, np.float64(1), minvalue, ber_rel)
+                
             ordered_list.append((ber_rel, minvalue))
         ber_and_minval_arrays[key] = (np.array([tup[0] for tup in ordered_list], dtype=np.float64).reshape(len(xvalues), len(yvalues)), np.array([tup[1] for tup in ordered_list], dtype=np.float64).reshape(len(xvalues), len(yvalues)))
-        print ber_and_minval_arrays[key]
+        print( ber_and_minval_arrays[key])
 
         fig, ax = plt.subplots(figsize=(12,4))
         z_max = 1E-5
@@ -184,7 +209,7 @@ def plot_ber_results(module, chip, ring, position, tap_settings, groupby = 'TAP0
             for j in range(len(yvalues)):
                 val = ber_and_minval_arrays[key][0][i,j]
                 minvalue = ber_and_minval_arrays[key][1][i,j]
-                print val, minvalue
+                print( val, minvalue)
                 if val == minvalue:
                     color = 'green'
                 elif math.log10(val) > 0.5 * (math.log10(minvalue) - math.log10(z_max)) + math.log10(z_max):
@@ -225,7 +250,7 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings=[], mo
             elif ring == 'R3':
                 xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_disk%s_%s.xml' % (ring, 'ber'))
             xmlobject = XMLInfo(xmlfile_for_ber)
-            print module, chip
+            print( module, chip)
             xmlobject.keep_only_modules_by_modulename([module])
             xmlobject.keep_only_chips_by_modulename(module, [chip])
             xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_CONFIG', '127')
@@ -252,6 +277,7 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings=[], mo
                 print(command_ber)
                 os.system(command_ber)
                 time.sleep(2)
+        
 
 
 
