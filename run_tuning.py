@@ -108,13 +108,13 @@ def get_settings_from_logfile( fname ):
 
     #index from the back so things can be added to the front
     settings = {
-        'tap2' : fields[-1],    
-        'tap1' : fields[-2],
-        'tap0' : fields[-3],
-        'pos'  : fields[-4].strip('pos'),
-        'chip' : fields[-5].strip('chip'),
-        'module' : fields[-6],
-        'ring'   : fields[-7]
+        'TAP2' : int(fields[-1]),    
+        'TAP1' : int(fields[-2]),
+        'TAP0' : int(fields[-3]),
+        'Pos'  : fields[-4].strip('pos'),
+        'Chip' : int(fields[-5].strip('chip')),
+        'Module' : fields[-6],
+        'Ring'   : fields[-7]
         }
     return settings
 
@@ -122,7 +122,7 @@ def get_all_info_from_logfile( fname ):
 
     all_info = get_settings_from_logfile( fname )
     nframes, nber = get_results_from_logfile( fname )
-    all_info.update( { 'nframes' : nframes, 'nber' : nber} )
+    all_info.update( { 'NFrames' : nframes, 'NBER' : nber} )
 
     return all_info
     
