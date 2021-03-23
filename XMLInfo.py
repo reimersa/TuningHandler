@@ -15,7 +15,7 @@ class XMLInfo:
         for e in [n for n in self.document.getElementsByTagName('Hybrid')[0].childNodes if n.nodeType is minidom.Node.ELEMENT_NODE]: print(e.attributes.items())
 
     def save_xml_as(self, outfilename):
-        with open(outfilename, 'wr') as f:
+        with open(outfilename, 'w') as f:
             f.write('<?xml version="1.0" encoding="UTF-8"?>')
             f.write(self.document.documentElement.toxml())
 
