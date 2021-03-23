@@ -17,3 +17,11 @@ daqsettings_per_xmltype = {'scurve': {
                                'nClkDelays': '10'
                                }
                            }
+                           
+                           
+xmltype_per_calibration = {'physics': 'scurve',
+                           'scurve': 'scurve',
+                           'pixelalive': 'scurve',
+                           'noise': 'noise',
+                           'threqu': 'scurve',
+                           'thradj': 'scurve'}
