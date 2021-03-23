@@ -78,29 +78,29 @@ def main():
     
     tap_settings_per_module_and_chip = {}
     for moduleidx, module in enumerate(modules_for_ber):
-    	settings_per_chip = {}
-    	for chip in chips_per_module[module]:
-    	    if not chip in settings_per_chip.keys():
-    		settings_per_chip[chip] = []	
-    		for s in tap_settings:
-    		    t0 = s[0]
-    		    t1 = s[1]
-    		    t2 = s[2]
-    		    if module == 'mod7' and chip == 1:
-    			t0 = min(t0+130, 1023)
-    		    if module == 'mod7' and chip == 2:
-    			t0 = min(t0-60, 1023)
+        settings_per_chip = {}
+        for chip in chips_per_module[module]:
+            if not chip in settings_per_chip.keys():
+                settings_per_chip[chip] = []
+            for s in tap_settings:
+                t0 = s[0]
+                t1 = s[1]
+                t2 = s[2]
+                if module == 'mod7' and chip == 1:
+                    t0 = min(t0+130, 1023)
+                if module == 'mod7' and chip == 2:
+                    t0 = min(t0-60, 1023)
 
-    		    settings_per_chip[chip].append((t0, t1, t2))
+                settings_per_chip[chip].append((t0, t1, t2))
 
-    	        tap_settings_per_module_and_chip[module] = settings_per_chip
+                tap_settings_per_module_and_chip[module] = settings_per_chip
 
 #            import pdb; pdb.set_trace()
             #print module, chip, tap_settings_per_module_and_chip[module][chip]
             #plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings_per_module_and_chip[module][chip])
             
 #    print tap_settings_per_module_and_chip
-    		
+            
     
 #    run_ber_scan(modules=modules_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings_per_module_and_chip=tap_settings_per_module_and_chip, value=84)
 
@@ -269,12 +269,12 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
             tap_settings = tap_settings_per_module_and_chip[module][chip]
             if ring == 'singleQuad':
                 if not len(modules) == 1:
-		    raise AttributeError('Trying to run BER in singleQuad mode with mode than one module')
+                    raise AttributeError('Trying to run BER in singleQuad mode with mode than one module')
                 module = modules[0]
                 xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_%s_%s_%s.xml' % (ring, module, 'ber'))
                 reset_singleQuad_xml_files(type='ber', modules=modules, chips = chips)
                 prepare_singleQuad_xml_files(type_name='ber', type_setting='scurve', modules=modules)
-	    elif ring == 'R1':
+            elif ring == 'R1':
                 xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_disk%s_%s.xml' % (ring, 'ber'))
                 reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R1, ring)
             elif ring == 'R3':
@@ -296,16 +296,19 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
                 #CML_CFG bits are used to set the inversion for tap0 and tap1
                 cml_cfg = 63 
                 if tap1 < 0:
-                	cml_cfg += 64 #TAP1 inversion is 6th bit
+                    cml_cfg += 64 #TAP1 inversion is 6th bit
                 if tap2 < 0:
-                	cml_cfg += 128 #TAP2 inversion is 7th bit
+                    cml_cfg += 128 #TAP2 inversion is 7th bit
                 xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_CONFIG', str(cml_cfg) )
                 xmlobject.save_xml_as(xmlfile_for_ber)
 
                 # assemble the OS command
-                if mode is 'time': tuningstepname = 'prbstime'
-                elif mode is 'frames': tuningstepname = 'prbsframes'
-                else: raise AttributeError('Function \'run_ber_scan()\' received invalid argument for \'mode\': %s. Must be \'time\' or \'frames\'' % mode)
+                if mode == 'time': 
+                    tuningstepname = 'prbstime'
+                elif mode == 'frames': 
+                    tuningstepname = 'prbsframes'
+                else: 
+                    raise AttributeError('Function \'run_ber_scan()\' received invalid argument for \'mode\': %s. Must be \'time\' or \'frames\'' % mode)
                 command_p = 'CMSITminiDAQ -f %s p' % (xmlfile_for_ber)
                 command_ber = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(logfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
 
