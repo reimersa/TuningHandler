@@ -45,23 +45,23 @@
   },
   "mod12": {
     "0": {
-      "VOLTAGE_TRIM_ANA": "16",
-      "VOLTAGE_TRIM_DIG": "16",
+      "VOLTAGE_TRIM_ANA": "14",
+      "VOLTAGE_TRIM_DIG": "26",
       "Vthreshold_LIN": "400"
     },
     "1": {
       "VOLTAGE_TRIM_ANA": "16",
-      "VOLTAGE_TRIM_DIG": "16",
+      "VOLTAGE_TRIM_DIG": "28",
       "Vthreshold_LIN": "400"
     },
     "2": {
       "VOLTAGE_TRIM_ANA": "16",
-      "VOLTAGE_TRIM_DIG": "16",
+      "VOLTAGE_TRIM_DIG": "27",
       "Vthreshold_LIN": "400"
     },
     "3": {
-      "VOLTAGE_TRIM_ANA": "16",
-      "VOLTAGE_TRIM_DIG": "16",
+      "VOLTAGE_TRIM_ANA": "19",
+      "VOLTAGE_TRIM_DIG": "22",
       "Vthreshold_LIN": "400"
     }
   },
