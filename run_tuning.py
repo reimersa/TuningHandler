@@ -7,13 +7,16 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+import json
+from yaml import safe_load
+
 import ROOT
 from ROOT import TFile, TH1D, TCanvas, TIter
 
 
 from XMLInfo import *
 from settings.typesettings import *
-from settings.chipsettings import *
+#from settings.chipsettings import *
 
 
 xmlfolder = 'xml/'
@@ -56,22 +59,25 @@ ids_and_chips_per_module_R3 = {
 
 
 def main():
-
-    reset_all_settings()
+    #reset_all_settings()
     
     mod_for_tuning = 'mod11'
     #run_reset(ring='singleQuad', module=mod_for_tuning)
     #run_programming(ring='singleQuad', module=mod_for_tuning)
-    run_calibration(ring='singleQuad', module=mod_for_tuning, calib='physics')
+    #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='physics')
     #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='pixelalive')
     #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='thradj')
-    #reset_xml_files()
-    #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='threqu')
-    #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='noise')
-    #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='scurve')
-    #plot_ph2acf_rootfile(runnr=7188, modname=mod_for_tuning)
+    thresholds = get_thresholds_from_last()
+    set_thresholds_for_module(module=mod_for_tuning, thresholds=thresholds[1])
+    reset_xml_files()
+    run_calibration(ring='singleQuad', module=mod_for_tuning, calib='threqu')
+    run_calibration(ring='singleQuad', module=mod_for_tuning, calib='noise')
+    run_calibration(ring='singleQuad', module=mod_for_tuning, calib='scurve')
+    plot_ph2acf_rootfile(runnr=get_last_runnr(), modname=mod_for_tuning)
     
-    # now run many BER tests
+    
+    
+	# now run many BER tests
     tap_settings = []
 #    for tap0 in [280, 300, 400]:
 #    for tap0 in [450, 475, 500, 550, 600 ]:
@@ -123,6 +129,82 @@ def main():
     #        pass
     #        plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings_per_module_and_chip[module][chip])
 
+
+def get_last_runnr():
+	#file 'RunNumber.txt' contains number the next run would have, nothing else.
+	with open('RunNumber.txt', 'r') as f:
+		runnr = int(f.readlines()[0]) - 1
+	return runnr
+
+def set_thresholds_for_module(module, thresholds):
+	# get chipsettings, change VThreshold_LIN, write chipsettings
+	# 'thresholds' is a dictionary with one entry per chip, maximum 4 entries
+	if len(thresholds.keys()) > 4: raise AttributeError('Threshold dictionary is too long for a single module.')
+	settings = get_chipsettings_from_json()
+	print(settings)
+	for chip in thresholds.keys():
+		settings[module][str(chip)]['Vthreshold_LIN'] = str(thresholds[chip])
+	print(settings)
+	write_chipsettings_to_json(settings)
+	
+
+
+def get_thresholds_from_last():
+	# last run has highest run-number and must have 'ThrAdjustment' in name
+	files = [f for f in glob.glob(os.path.join('Results', '*.root')) if 'ThrAdjustment' in f]
+	
+	# list is ordered
+	lastfilename = files[0]
+	print(lastfilename)
+	infile = TFile(lastfilename, 'READ')
+	foldername = 'Detector/Board_0/OpticalGroup_0/'
+	infile.cd(foldername)
+	dir = ROOT.gDirectory
+	iter = TIter(dir.GetListOfKeys())
+	modules = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
+	
+	thresholds_per_id_and_chip = {}
+	for module in modules:
+		thresholds_per_id_and_chip[int(module.split('_')[1])] = {}
+		histpath = foldername + module
+		infile.cd()
+		infile.cd(histpath)
+		chips = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
+		print(module, chips)
+		
+		for chip in chips:
+			mod_dummy = module
+			chip_dummy = chip
+			fullhistpath = os.path.join(histpath, chip)
+			infile.cd()
+			infile.cd(fullhistpath)
+			
+			objs = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
+			infile.cd()
+			for objname in objs:
+				if not 'Threhsold' in objname: continue
+				print(objname)
+				canvas = infile.Get(os.path.join(fullhistpath, objname))
+				hist = canvas.GetPrimitive(objname)
+				vthresh = int(hist.GetBinCenter(hist.GetMaximumBin()) - hist.GetBinWidth(hist.GetMaximumBin())/2.)
+				print(vthresh)
+				thresholds_per_id_and_chip[int(module.split('_')[1])][int(chip.split('_')[1])] = vthresh
+	return thresholds_per_id_and_chip
+				
+	
+
+def write_chipsettings_to_json(settings):
+	jsonname = os.path.join('settings','chipsettings.json')
+	with open(jsonname, 'w') as j:
+		json.dump(obj=settings, fp=j, indent=2, sort_keys = True)
+		
+def get_chipsettings_from_json():
+	jsonname = os.path.join('settings','chipsettings.json')
+	result = {}
+	with open(jsonname, 'r') as j:
+		result = safe_load(j)
+	return result
+	
 
 
 def plot_ph2acf_rootfile(runnr, modname, tag=''):
@@ -474,8 +556,9 @@ def reset_and_prepare_Ring_xml_file(type_name, type_setting, ids_and_chips_per_m
                 xmlobject.set_chip_attribute_by_moduleid(id, chip, 'Lane', 0)
             else: raise AttributeError('invalid ring specified: %s' % (str(ring)))
             xmlobject.set_chip_attribute_by_moduleid(id, chip, 'configfile', 'CMSIT_RD53_%s_chip%i_default.txt' % (module, chip))
-            if chip in chip_settings[module]:
-                settings = chip_settings[module][chip]
+            chip_settings = get_chipsettings_from_json()
+            if str(chip) in chip_settings[module]:
+                settings = chip_settings[module][str(chip)]
                 for setting in settings:
                     xmlobject.set_chip_setting_by_modulename(module, chip, setting, settings[setting])
         xmlobject.keep_only_chips_by_moduleid(id, chips)
@@ -495,14 +578,14 @@ def prepare_singleQuad_xml_files(type_name, type_setting, modules=modulelist):
         for chip in chiplist:
             xmlobject.set_chip_attribute_by_moduleid(1, chip, 'Lane', str(chip)) # the lane corresponds to the chip ID on the single AB
             xmlobject.set_chip_attribute_by_moduleid(1, chip, 'configfile', 'CMSIT_RD53_%s_chip%i_default.txt' % (module, chip))
-
+        chip_settings = get_chipsettings_from_json()
         chip_settings_thismodule = chip_settings[module]
         keepchips = []
         for chip in chip_settings_thismodule:
             settings = chip_settings_thismodule[chip]
             for setting in settings:
-                xmlobject.set_chip_setting_by_modulename(module, chip, setting, settings[setting])
-        xmlobject.keep_only_chips_by_modulename(module, chip_settings_thismodule.keys())
+                xmlobject.set_chip_setting_by_modulename(module, int(chip), setting, settings[setting])
+        xmlobject.keep_only_chips_by_modulename(module, [int(c) for c in chip_settings_thismodule.keys()])
         xmlobject.save_xml_as(xmlfilename)
 
 
