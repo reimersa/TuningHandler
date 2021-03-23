@@ -59,21 +59,14 @@ ids_and_chips_per_module_R3 = {
 
 
 def main():
-    #reset_all_settings()
+    reset_all_settings()
     
-    mod_for_tuning = 'mod11'
+    mod_for_tuning = 'mod12'
     #run_reset(ring='singleQuad', module=mod_for_tuning)
     #run_programming(ring='singleQuad', module=mod_for_tuning)
-    #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='physics')
-    #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='pixelalive')
-    #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='thradj')
-    thresholds = get_thresholds_from_last()
-    set_thresholds_for_module(module=mod_for_tuning, thresholds=thresholds[1])
-    reset_xml_files()
-    run_calibration(ring='singleQuad', module=mod_for_tuning, calib='threqu')
-    run_calibration(ring='singleQuad', module=mod_for_tuning, calib='noise')
-    run_calibration(ring='singleQuad', module=mod_for_tuning, calib='scurve')
-    plot_ph2acf_rootfile(runnr=get_last_runnr(), modname=mod_for_tuning)
+    run_calibration(ring='singleQuad', module=mod_for_tuning, calib='physics')
+    #reset_xml_files()
+    #run_threshold_tuning(module=module_for_tuning)
     
     
     
@@ -129,6 +122,18 @@ def main():
     #        pass
     #        plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings_per_module_and_chip[module][chip])
 
+
+def run_threshold_tuning(module):
+	reset_xml_files()
+	run_calibration(ring='singleQuad', module=module, calib='pixelalive')
+	run_calibration(ring='singleQuad', module=module, calib='thradj')
+	thresholds = get_thresholds_from_last()
+	set_thresholds_for_module(module=module, thresholds=thresholds[1])
+	reset_xml_files()
+	run_calibration(ring='singleQuad', module=module, calib='threqu')
+	run_calibration(ring='singleQuad', module=module, calib='noise')
+	run_calibration(ring='singleQuad', module=module, calib='scurve')
+	plot_ph2acf_rootfile(runnr=get_last_runnr(), modname=module)
 
 def get_last_runnr():
 	#file 'RunNumber.txt' contains number the next run would have, nothing else.
@@ -189,6 +194,7 @@ def get_thresholds_from_last():
 				vthresh = int(hist.GetBinCenter(hist.GetMaximumBin()) - hist.GetBinWidth(hist.GetMaximumBin())/2.)
 				print(vthresh)
 				thresholds_per_id_and_chip[int(module.split('_')[1])][int(chip.split('_')[1])] = vthresh
+	del infile
 	return thresholds_per_id_and_chip
 				
 	
@@ -256,6 +262,7 @@ def plot_ph2acf_rootfile(runnr, modname, tag=''):
 				ensureDirectory(outdir)
 				outcanvas.SaveAs(outdir + outfilename)
 				outcanvas.SaveAs(outdir + outfilename.replace('pdf', 'png'))
+	del infile
 	
 
 
