@@ -24,12 +24,12 @@ txtfile_blueprint = '/home/uzh-tepx/Ph2_ACF/settings/RD53Files/CMSIT_RD53.txt'
 
 
 chiplist = [0, 1, 2, 3]
-modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'modT01', 'modT02', 'modT03', 'modT04']
+modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12', 'modT01', 'modT02', 'modT03', 'modT04']
 
 
 ids_and_chips_per_module_R1 = {
-#    'mod7': (1, [0, 2])
-    'mod6': (1, [0, 1, 2])
+    #'mod7': (1, [1])
+    'mod7': (1, [1, 0, 2])
     #'mod4': (1, [0])
 }
 
@@ -54,17 +54,20 @@ ids_and_chips_per_module_R3 = {
 
 def main():
 
-    #reset_all_settings()
+    reset_all_settings()
 
 
     # now run many BER tests
     tap_settings = []
 #    for tap0 in [280, 300, 400]:
-    for tap0 in [500]:
+#    for tap0 in [450, 475, 500, 550, 600 ]:
+    for tap0 in [450, 475, 500, 550 ]:
     #for tap0 in [700]:
-        for tap1 in range(0, 00+1, 100):
-            for tap2 in range(0, 00+1, 100):
+        for tap1 in range(-150, 150+1, 25):
+            for tap2 in range(-150, 150+1, 25):
                 tap_settings.append((tap0, tap1, tap2))
+                
+                
 
     ring            = 'R1'
     positions       = ['5']
@@ -73,12 +76,38 @@ def main():
     for mod in ids_and_chips_per_module_R1:
         chips_per_module[mod] = ids_and_chips_per_module_R1[mod][1]
     
-    #run_ber_scan(modules=modules_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings=tap_settings, value=5)
-
+    tap_settings_per_module_and_chip = {}
     for moduleidx, module in enumerate(modules_for_ber):
-        for chip in chips_per_module[module]:
-            pass
-            plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings)
+    	settings_per_chip = {}
+    	for chip in chips_per_module[module]:
+    	    if not chip in settings_per_chip.keys():
+    		settings_per_chip[chip] = []	
+    		for s in tap_settings:
+    		    t0 = s[0]
+    		    t1 = s[1]
+    		    t2 = s[2]
+    		    if module == 'mod7' and chip == 1:
+    			t0 = min(t0+130, 1023)
+    		    if module == 'mod7' and chip == 2:
+    			t0 = min(t0-60, 1023)
+
+    		    settings_per_chip[chip].append((t0, t1, t2))
+
+    	        tap_settings_per_module_and_chip[module] = settings_per_chip
+
+#            import pdb; pdb.set_trace()
+            #print module, chip, tap_settings_per_module_and_chip[module][chip]
+            #plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings_per_module_and_chip[module][chip])
+            
+#    print tap_settings_per_module_and_chip
+    		
+    
+#    run_ber_scan(modules=modules_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings_per_module_and_chip=tap_settings_per_module_and_chip, value=84)
+
+    #for moduleidx, module in enumerate(modules_for_ber):
+    #    for chip in chips_per_module[module]:
+    #        pass
+    #        plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings_per_module_and_chip[module][chip])
 
 
 
@@ -231,20 +260,21 @@ def plot_ber_results(module, chip, ring, position, tap_settings, groupby = 'TAP0
 
 
 
-def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings=[], mode='time', value=10):
+def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_module_and_chip, mode='time', value=10):
 
     # first, enable TAP1, TAP2
 
     for moduleidx, module in enumerate(modules):
         for chip in chips_per_module[module]:
-
+            tap_settings = tap_settings_per_module_and_chip[module][chip]
             if ring == 'singleQuad':
-                if not len(modules) == 1: raise AttributeError('Trying to run BER in singleQuad mode with mode than one module')
+                if not len(modules) == 1:
+		    raise AttributeError('Trying to run BER in singleQuad mode with mode than one module')
                 module = modules[0]
                 xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_%s_%s_%s.xml' % (ring, module, 'ber'))
                 reset_singleQuad_xml_files(type='ber', modules=modules, chips = chips)
                 prepare_singleQuad_xml_files(type_name='ber', type_setting='scurve', modules=modules)
-            elif ring == 'R1':
+	    elif ring == 'R1':
                 xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_disk%s_%s.xml' % (ring, 'ber'))
                 reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R1, ring)
             elif ring == 'R3':
@@ -253,14 +283,23 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings=[], mo
             print( module, chip)
             xmlobject.keep_only_modules_by_modulename([module])
             xmlobject.keep_only_chips_by_modulename(module, [chip])
-            xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_CONFIG', '127')
+
+
 
             # now, in a loop, set TAP values to scan through
             for tap0, tap1, tap2 in tap_settings:
+                
                 print(tap0, tap1, tap2)
                 xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_TAP0_BIAS', str(tap0))
-                xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_TAP1_BIAS', str(tap1))
-                xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_TAP2_BIAS', str(tap2))
+                xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_TAP1_BIAS', str(abs(tap1)) ) #inversion is in a separate config setting
+                xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_TAP2_BIAS', str(abs(tap2)) ) #inversion is in a separate Config setting
+                #CML_CFG bits are used to set the inversion for tap0 and tap1
+                cml_cfg = 63 
+                if tap1 < 0:
+                	cml_cfg += 64 #TAP1 inversion is 6th bit
+                if tap2 < 0:
+                	cml_cfg += 128 #TAP2 inversion is 7th bit
+                xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_CONFIG', str(cml_cfg) )
                 xmlobject.save_xml_as(xmlfile_for_ber)
 
                 # assemble the OS command
