@@ -92,6 +92,102 @@ chip_settings = {
     },
 
 
+'mod9': {
+    0: {
+        'Vthreshold_LIN': '362',
+        'VOLTAGE_TRIM_DIG': '28',
+        'VOLTAGE_TRIM_ANA': '18'
+        },
+    1: {
+        'Vthreshold_LIN': '351',
+        'VOLTAGE_TRIM_DIG': '26',
+        'VOLTAGE_TRIM_ANA': '13'
+        },
+    2: {
+        'Vthreshold_LIN': '359',
+        'VOLTAGE_TRIM_DIG': '28',
+        'VOLTAGE_TRIM_ANA': '15'
+        },
+    3: {
+        'Vthreshold_LIN': '348',
+        'VOLTAGE_TRIM_DIG': '26',
+        'VOLTAGE_TRIM_ANA': '16'
+        }
+    },
+
+
+'mod10': {
+    0: {
+        'Vthreshold_LIN': '400',
+        'VOLTAGE_TRIM_DIG': '16',
+        'VOLTAGE_TRIM_ANA': '16'
+        },
+    1: {
+        'Vthreshold_LIN': '400',
+        'VOLTAGE_TRIM_DIG': '16',
+        'VOLTAGE_TRIM_ANA': '16'
+        },
+    2: {
+        'Vthreshold_LIN': '400',
+        'VOLTAGE_TRIM_DIG': '16',
+        'VOLTAGE_TRIM_ANA': '16'
+        },
+    3: {
+        'Vthreshold_LIN': '400',
+        'VOLTAGE_TRIM_DIG': '16',
+        'VOLTAGE_TRIM_ANA': '16'
+        }
+    },
+
+
+'mod11': {
+    0: {
+        'Vthreshold_LIN': '400',
+        'VOLTAGE_TRIM_DIG': '16',
+        'VOLTAGE_TRIM_ANA': '16'
+        },
+    1: {
+        'Vthreshold_LIN': '400',
+        'VOLTAGE_TRIM_DIG': '16',
+        'VOLTAGE_TRIM_ANA': '16'
+        },
+    2: {
+        'Vthreshold_LIN': '400',
+        'VOLTAGE_TRIM_DIG': '16',
+        'VOLTAGE_TRIM_ANA': '16'
+        },
+    3: {
+        'Vthreshold_LIN': '400',
+        'VOLTAGE_TRIM_DIG': '16',
+        'VOLTAGE_TRIM_ANA': '16'
+        }
+    },
+
+
+'mod12': {
+    0: {
+        'Vthreshold_LIN': '400',
+        'VOLTAGE_TRIM_DIG': '16',
+        'VOLTAGE_TRIM_ANA': '16'
+        },
+    1: {
+        'Vthreshold_LIN': '400',
+        'VOLTAGE_TRIM_DIG': '16',
+        'VOLTAGE_TRIM_ANA': '16'
+        },
+    2: {
+        'Vthreshold_LIN': '400',
+        'VOLTAGE_TRIM_DIG': '16',
+        'VOLTAGE_TRIM_ANA': '16'
+        },
+    3: {
+        'Vthreshold_LIN': '400',
+        'VOLTAGE_TRIM_DIG': '16',
+        'VOLTAGE_TRIM_ANA': '16'
+        }
+    },
+
+
 'modT01': {
     0: {
         'Vthreshold_LIN': '400',
