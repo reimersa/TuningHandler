@@ -143,23 +143,23 @@ chip_settings = {
 'mod11': {
     0: {
         'Vthreshold_LIN': '400',
-        'VOLTAGE_TRIM_DIG': '16',
-        'VOLTAGE_TRIM_ANA': '16'
+        'VOLTAGE_TRIM_DIG': '29',
+        'VOLTAGE_TRIM_ANA': '17'
         },
     1: {
         'Vthreshold_LIN': '400',
-        'VOLTAGE_TRIM_DIG': '16',
-        'VOLTAGE_TRIM_ANA': '16'
+        'VOLTAGE_TRIM_DIG': '29',
+        'VOLTAGE_TRIM_ANA': '15'
         },
     2: {
         'Vthreshold_LIN': '400',
-        'VOLTAGE_TRIM_DIG': '16',
-        'VOLTAGE_TRIM_ANA': '16'
+        'VOLTAGE_TRIM_DIG': '27',
+        'VOLTAGE_TRIM_ANA': '18'
         },
     3: {
         'Vthreshold_LIN': '400',
-        'VOLTAGE_TRIM_DIG': '16',
-        'VOLTAGE_TRIM_ANA': '16'
+        'VOLTAGE_TRIM_DIG': '27',
+        'VOLTAGE_TRIM_ANA': '18'
         }
     },
 
