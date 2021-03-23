@@ -1,11 +1,14 @@
 #! /usr/bin/env python3
-import os, re
+import os, re, glob
 import time, math
 import numpy as np
 import shutil as sh
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
+import ROOT
+from ROOT import TFile, TH1D, TCanvas, TIter
 
 
 from XMLInfo import *
@@ -54,19 +57,20 @@ ids_and_chips_per_module_R3 = {
 
 def main():
 
-    #reset_all_settings()
+    reset_all_settings()
     
-    #run_reset(ring='singleQuad', module='mod10')
-    #run_programming(ring='singleQuad', module='mod10')
-    #run_calibration(ring='singleQuad', module='mod10', calib='physics')
-    #run_calibration(ring='singleQuad', module='mod10', calib='pixelalive')
-    #run_calibration(ring='singleQuad', module='mod10', calib='thradj')
+    mod_for_tuning = 'mod11'
+    #run_reset(ring='singleQuad', module=mod_for_tuning)
+    #run_programming(ring='singleQuad', module=mod_for_tuning)
+    run_calibration(ring='singleQuad', module=mod_for_tuning, calib='physics')
+    #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='pixelalive')
+    #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='thradj')
     #reset_xml_files()
-    #run_calibration(ring='singleQuad', module='mod10', calib='threqu')
-    #run_calibration(ring='singleQuad', module='mod10', calib='noise')
-    run_calibration(ring='singleQuad', module='mod10', calib='scurve')
-
-
+    #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='threqu')
+    #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='noise')
+    #run_calibration(ring='singleQuad', module=mod_for_tuning, calib='scurve')
+    #plot_ph2acf_rootfile(runnr=7188, modname=mod_for_tuning)
+    
     # now run many BER tests
     tap_settings = []
 #    for tap0 in [280, 300, 400]:
@@ -121,7 +125,56 @@ def main():
 
 
 
-
+def plot_ph2acf_rootfile(runnr, modname, tag=''):
+	ROOT.gROOT.SetBatch(True)
+	
+	runnrstr = '%06i' % runnr
+	infilepattern = 'Results/Run%s_*.root' % runnrstr
+	
+	matches = glob.glob(infilepattern)
+	if len(matches) > 1:
+		raise ValueError('Trying to plot histograms in rootfile for runnr. %i, but there is more than one file found with the pattern \'Run%s_*.root\': '% (runnrstr) + matches )
+	infilename = matches[0]
+	
+	infile = TFile(infilename, 'READ')
+	foldername = 'Detector/Board_0/OpticalGroup_0/'
+	infile.cd(foldername)
+	dir = ROOT.gDirectory
+	iter = TIter(dir.GetListOfKeys())
+	modules = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
+	
+	for module in modules:
+		histpath = foldername + module
+		infile.cd()
+		infile.cd(histpath)
+		chips = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
+		
+		for chip in chips:
+			mod_dummy = module
+			chip_dummy = chip
+			fullhistpath = os.path.join(histpath, chip)
+			infile.cd()
+			infile.cd(fullhistpath)
+			
+			canvases = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
+			infile.cd()
+			for canvasname in canvases:
+				if canvasname == 'Channel': continue
+				canvas = infile.Get(os.path.join(fullhistpath, canvasname))
+				hist   = canvas.GetPrimitive(canvasname)
+				canvastitle = canvasname.split('_')[4] + '_' + chip
+				outcanvas = TCanvas('c', canvastitle, 500, 500)
+				if 'SCurves' in canvastitle:
+					ROOT.gPad.SetLogz()
+				hist.Draw('colz')
+				ROOT.gStyle.SetOptStat(0);
+				outdir = os.path.join('plots', 'thresholds', modname, '')
+				outfilename = canvastitle + tag + '.pdf'
+				outfilename = outfilename.replace('Chip_', 'chip')
+				ensureDirectory(outdir)
+				outcanvas.SaveAs(outdir + outfilename)
+				outcanvas.SaveAs(outdir + outfilename.replace('pdf', 'png'))
+	
 
 
 def run_programming(ring, module):
@@ -463,7 +516,11 @@ def get_xmlfile_name(ring, module, calib):
 	else:
 		return '_'.join(['CMSIT', 'disk' + ring, calib]) + '.xml'
 
-
+def ensureDirectory(dirname):
+	if not os.path.exists(dirname):
+		os.makedirs(dirname)
+		if not os.path.exists(dirname):
+			print('--> Failed to create directory \'%s\'' % dirname)
 
 def escape_ansi(line):
     ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
