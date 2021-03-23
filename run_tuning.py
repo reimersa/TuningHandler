@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 import os, re
 import time, math
 import numpy as np
@@ -54,7 +54,17 @@ ids_and_chips_per_module_R3 = {
 
 def main():
 
-    reset_all_settings()
+    #reset_all_settings()
+    
+    #run_reset(ring='singleQuad', module='mod10')
+    #run_programming(ring='singleQuad', module='mod10')
+    #run_calibration(ring='singleQuad', module='mod10', calib='physics')
+    #run_calibration(ring='singleQuad', module='mod10', calib='pixelalive')
+    #run_calibration(ring='singleQuad', module='mod10', calib='thradj')
+    #reset_xml_files()
+    #run_calibration(ring='singleQuad', module='mod10', calib='threqu')
+    #run_calibration(ring='singleQuad', module='mod10', calib='noise')
+    run_calibration(ring='singleQuad', module='mod10', calib='scurve')
 
 
     # now run many BER tests
@@ -114,7 +124,23 @@ def main():
 
 
 
-
+def run_programming(ring, module):
+	xmlfilename = get_xmlfile_name(ring=ring, module=module, calib='scurve')
+	command = 'CMSITminiDAQ -f %s -p' % (os.path.join(xmlfolder, xmlfilename))
+	print(command)
+	os.system(command)
+	
+def run_reset(ring, module):
+	xmlfilename = get_xmlfile_name(ring=ring, module=module, calib='scurve')
+	command = 'CMSITminiDAQ -f %s -r' % (os.path.join(xmlfolder, xmlfilename))
+	print(command)
+	os.system(command)
+	
+def run_calibration(ring, module, calib):
+	xmlfilename = get_xmlfile_name(ring=ring, module=module, calib=xmltype_per_calibration[calib])
+	command = 'CMSITminiDAQ -f %s -c %s' % (os.path.join(xmlfolder, xmlfilename), calib)
+	print(command)
+	os.system(command)
 
 
 def get_results_from_logfile( fname ):
@@ -326,14 +352,7 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
 
 def reset_all_settings():
     reset_txt_files()
-    for type in daqsettings_per_xmltype:
-        reset_singleQuad_xml_files(type=type, modules=modulelist)
-        prepare_singleQuad_xml_files(type_name=type, type_setting=type, modules=modulelist)
-        reset_and_prepare_Ring_xml_file(type, type, ids_and_chips_per_module_R1, 'R1')
-        reset_and_prepare_Ring_xml_file(type, type, ids_and_chips_per_module_R3, 'R3')
-    reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R1, 'R1')
-    reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R3, 'R3')
-    print('--> Reset all xml and txt settings.')
+    reset_xml_files()
 
 
 def reset_txt_files(modules=modulelist, chips=chiplist):
@@ -341,6 +360,17 @@ def reset_txt_files(modules=modulelist, chips=chiplist):
         for chip in chips:
             targetname = os.path.join(txtfolder, 'CMSIT_RD53_%s_chip%i_default.txt' % (module, chip))
             sh.copy2(txtfile_blueprint, targetname)
+    print('--> Reset txt files')
+            
+def reset_xml_files():
+    for type in daqsettings_per_xmltype:
+        reset_singleQuad_xml_files(type=type, modules=modulelist)
+        prepare_singleQuad_xml_files(type_name=type, type_setting=type, modules=modulelist)
+        reset_and_prepare_Ring_xml_file(type, type, ids_and_chips_per_module_R1, 'R1')
+        reset_and_prepare_Ring_xml_file(type, type, ids_and_chips_per_module_R3, 'R3')
+    reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R1, 'R1')
+    reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R3, 'R3')
+    print('--> Reset XML files')
 
 
 
@@ -424,7 +454,14 @@ def prepare_singleQuad_xml_files(type_name, type_setting, modules=modulelist):
 
 
 
-
+def get_xmlfile_name(ring, module, calib):
+	modstr = ''
+	ringstr = 'disk' + ring
+	
+	if ring == 'singleQuad':
+		return '_'.join(['CMSIT', ring, module, calib]) + '.xml'
+	else:
+		return '_'.join(['CMSIT', 'disk' + ring, calib]) + '.xml'
 
 
 
