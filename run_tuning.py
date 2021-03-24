@@ -40,7 +40,7 @@ ids_and_chips_per_module_R1 = {
 }
 
 ids_and_chips_per_module_R3 = {
-    'mod7': (1, [3])
+    'mod4': (1, [3])
 }
 
 
@@ -61,12 +61,12 @@ ids_and_chips_per_module_R3 = {
 def main():
     reset_all_settings()
     
-    mod_for_tuning = 'mod12'
-    #run_reset(ring='singleQuad', module=mod_for_tuning)
-    #run_programming(ring='singleQuad', module=mod_for_tuning)
-    run_calibration(ring='singleQuad', module=mod_for_tuning, calib='physics')
-    #reset_xml_files()
-    #run_threshold_tuning(module=module_for_tuning)
+    mod_for_tuning = 'modT04'
+    ring_for_tuning = 'R3'
+    #run_reset(ring=ring_for_tuning, module=mod_for_tuning)
+    run_programming(ring=ring_for_tuning, module=mod_for_tuning)
+    #run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='physics')
+    #run_threshold_tuning(module=mod_for_tuning)
     
     
     
@@ -543,9 +543,9 @@ def reset_and_prepare_Ring_xml_file(type_name, type_setting, ids_and_chips_per_m
     for mod in ids_and_chips_per_module:
         moduleids.append(ids_and_chips_per_module[mod][0])
     for id in moduleids:
-        if id == 0: continue
-        xmlobject.copy_module_by_moduleid(0, id)
+        if not id == 0: xmlobject.copy_module_by_moduleid(0, id)
         xmlobject.set_txtfilepath_by_moduleid(id, txtfolder)
+        
     xmlobject.keep_only_modules_by_moduleid(moduleids)
 
     # set up chips per module
@@ -560,7 +560,7 @@ def reset_and_prepare_Ring_xml_file(type_name, type_setting, ids_and_chips_per_m
             if ring == 'R1':
                 xmlobject.set_chip_attribute_by_moduleid(id, chip, 'Lane', str(chip))
             elif ring == 'R3':
-                xmlobject.set_chip_attribute_by_moduleid(id, chip, 'Lane', 0)
+                xmlobject.set_chip_attribute_by_moduleid(id, chip, 'Lane', str(0))
             else: raise AttributeError('invalid ring specified: %s' % (str(ring)))
             xmlobject.set_chip_attribute_by_moduleid(id, chip, 'configfile', 'CMSIT_RD53_%s_chip%i_default.txt' % (module, chip))
             chip_settings = get_chipsettings_from_json()
