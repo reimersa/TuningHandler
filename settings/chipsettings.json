@@ -18,7 +18,7 @@
     "3": {
       "VOLTAGE_TRIM_ANA": "16",
       "VOLTAGE_TRIM_DIG": "28",
-      "Vthreshold_LIN": "366"
+      "Vthreshold_LIN": "367"
     }
   },
   "mod11": {
@@ -47,22 +47,22 @@
     "0": {
       "VOLTAGE_TRIM_ANA": "14",
       "VOLTAGE_TRIM_DIG": "26",
-      "Vthreshold_LIN": "400"
+      "Vthreshold_LIN": "362"
     },
     "1": {
       "VOLTAGE_TRIM_ANA": "16",
       "VOLTAGE_TRIM_DIG": "28",
-      "Vthreshold_LIN": "400"
+      "Vthreshold_LIN": "363"
     },
     "2": {
       "VOLTAGE_TRIM_ANA": "16",
       "VOLTAGE_TRIM_DIG": "27",
-      "Vthreshold_LIN": "400"
+      "Vthreshold_LIN": "369"
     },
     "3": {
       "VOLTAGE_TRIM_ANA": "19",
       "VOLTAGE_TRIM_DIG": "22",
-      "Vthreshold_LIN": "400"
+      "Vthreshold_LIN": "363"
     }
   },
   "mod3": {
@@ -167,7 +167,7 @@
     "3": {
       "VOLTAGE_TRIM_ANA": "16",
       "VOLTAGE_TRIM_DIG": "26",
-      "Vthreshold_LIN": "348"
+      "Vthreshold_LIN": "347"
     }
   },
   "modT01": {
@@ -239,23 +239,23 @@
   "modT04": {
     "0": {
       "VOLTAGE_TRIM_ANA": "16",
-      "VOLTAGE_TRIM_DIG": "16",
-      "Vthreshold_LIN": "400"
+      "VOLTAGE_TRIM_DIG": "27",
+      "Vthreshold_LIN": "362"
     },
     "1": {
-      "VOLTAGE_TRIM_ANA": "16",
-      "VOLTAGE_TRIM_DIG": "16",
-      "Vthreshold_LIN": "400"
+      "VOLTAGE_TRIM_ANA": "14",
+      "VOLTAGE_TRIM_DIG": "26",
+      "Vthreshold_LIN": "363"
     },
     "2": {
-      "VOLTAGE_TRIM_ANA": "16",
-      "VOLTAGE_TRIM_DIG": "16",
-      "Vthreshold_LIN": "400"
+      "VOLTAGE_TRIM_ANA": "18",
+      "VOLTAGE_TRIM_DIG": "30",
+      "Vthreshold_LIN": "369"
     },
     "3": {
-      "VOLTAGE_TRIM_ANA": "16",
-      "VOLTAGE_TRIM_DIG": "16",
-      "Vthreshold_LIN": "400"
+      "VOLTAGE_TRIM_ANA": "15",
+      "VOLTAGE_TRIM_DIG": "29",
+      "Vthreshold_LIN": "363"
     }
   }
 }
