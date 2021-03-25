@@ -40,7 +40,12 @@ ids_and_chips_per_module_R1 = {
 }
 
 ids_and_chips_per_module_R3 = {
-    'mod4': (1, [3])
+    #'mod11': (1, [3]),
+    #'mod9':  (2, [3]),
+    #'mod10': (3, [3])
+    #'mod3':   (1, [3]),
+    'modT03': (2, [3]),
+    'mod7':   (3, [3]),
 }
 
 
@@ -59,14 +64,22 @@ ids_and_chips_per_module_R3 = {
 
 
 def main():
-    reset_all_settings()
     
     mod_for_tuning = 'modT04'
-    ring_for_tuning = 'R3'
+    ring_for_tuning = 'singleQuad'
+    prefix_plotfolder = 'modT04_coated'
+    
+    reset_all_settings()
     #run_reset(ring=ring_for_tuning, module=mod_for_tuning)
-    run_programming(ring=ring_for_tuning, module=mod_for_tuning)
+    #run_programming(ring=ring_for_tuning, module=mod_for_tuning)
     #run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='physics')
-    #run_threshold_tuning(module=mod_for_tuning)
+    
+    if ring_for_tuning == 'singleQuad': plotfolderpostfix = ''
+    elif ring_for_tuning == 'R1': plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R1.keys()])
+    elif ring_for_tuning == 'R3': plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R3.keys()])
+    else: raise ValueError('Invalid \'ring_for_tuning\' specified: %s' % (ring_for_tuning))
+    
+    run_threshold_tuning(module=mod_for_tuning, ring=ring_for_tuning, plotfoldername=prefix_plotfolder+plotfolderpostfix)
     
     
     
@@ -123,17 +136,53 @@ def main():
     #        plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings_per_module_and_chip[module][chip])
 
 
-def run_threshold_tuning(module):
+def run_threshold_tuning(module, ring, plotfoldername):
 	reset_xml_files()
-	run_calibration(ring='singleQuad', module=module, calib='pixelalive')
-	run_calibration(ring='singleQuad', module=module, calib='thradj')
-	thresholds = get_thresholds_from_last()
-	set_thresholds_for_module(module=module, thresholds=thresholds[1])
+	reset_txt_files()
+	
+	module_per_id = {}
+	if not ring == "singleQuad":
+		if ring == 'R1':
+			id_per_module = ids_and_chips_per_module_R1
+		elif ring == 'R3':
+			id_per_module = ids_and_chips_per_module_R3
+		else: raise ValueError('Invalid value of \'ring\': %s' % (ring))
+		for modkey in id_per_module:
+			id = id_per_module[modkey][0]
+			module_per_id[id] = modkey
+	else: 
+		id_per_module = {module: 1} # single modules are always in J1 (second from the left)
+		module_per_id = {1: module}
+		
+	# reset all VThreshold_LINs to 400
+	for module in id_per_module:
+		fresh_thresholds = {}
+		if ring == 'SingleQuad':
+			for chip in chiplist:
+				fresh_thresholds[chip] = '400'
+		elif ring == 'R1' or ring == 'R3':
+			for chip in id_per_module[module][1]:
+				fresh_thresholds[chip] = '400'
+		set_thresholds_for_module(module=module, thresholds=fresh_thresholds)
+	print('Reset all VThreshold_LIN to 400.')
+	
 	reset_xml_files()
-	run_calibration(ring='singleQuad', module=module, calib='threqu')
-	run_calibration(ring='singleQuad', module=module, calib='noise')
-	run_calibration(ring='singleQuad', module=module, calib='scurve')
-	plot_ph2acf_rootfile(runnr=get_last_runnr(), modname=module)
+	run_calibration(ring=ring, module=module, calib='pixelalive')
+	#run_calibration(ring=ring, module=module, calib='threqu')
+	#run_calibration(ring=ring, module=module, calib='noise')
+	run_calibration(ring=ring, module=module, calib='thradj')
+		
+		
+	thresholds_per_id_and_chip = get_thresholds_from_last()
+	for id in thresholds_per_id_and_chip:
+		set_thresholds_for_module(module=module_per_id[id], thresholds=thresholds_per_id_and_chip[id])
+		print('set the following thresholds for module %s with id %s: '% (module_per_id[id], str(id)), thresholds_per_id_and_chip[id])
+		
+	reset_xml_files()
+	run_calibration(ring=ring, module=module, calib='threqu')
+	run_calibration(ring=ring, module=module, calib='noise')
+	run_calibration(ring=ring, module=module, calib='scurve')
+	plot_ph2acf_rootfile(runnr=get_last_runnr(), module_per_id=module_per_id, plotfoldername=plotfoldername)
 
 def get_last_runnr():
 	#file 'RunNumber.txt' contains number the next run would have, nothing else.
@@ -146,10 +195,8 @@ def set_thresholds_for_module(module, thresholds):
 	# 'thresholds' is a dictionary with one entry per chip, maximum 4 entries
 	if len(thresholds.keys()) > 4: raise AttributeError('Threshold dictionary is too long for a single module.')
 	settings = get_chipsettings_from_json()
-	print(settings)
 	for chip in thresholds.keys():
 		settings[module][str(chip)]['Vthreshold_LIN'] = str(thresholds[chip])
-	print(settings)
 	write_chipsettings_to_json(settings)
 	
 
@@ -158,8 +205,10 @@ def get_thresholds_from_last():
 	# last run has highest run-number and must have 'ThrAdjustment' in name
 	files = [f for f in glob.glob(os.path.join('Results', '*.root')) if 'ThrAdjustment' in f]
 	
-	# list is ordered
-	lastfilename = files[0]
+	# list is unordered
+	runnrs = [int(n.split('_')[0].split('Run')[1]) for n in files]
+	maxidx = runnrs.index(max(runnrs))
+	lastfilename = files[maxidx]
 	print(lastfilename)
 	infile = TFile(lastfilename, 'READ')
 	foldername = 'Detector/Board_0/OpticalGroup_0/'
@@ -188,11 +237,9 @@ def get_thresholds_from_last():
 			infile.cd()
 			for objname in objs:
 				if not 'Threhsold' in objname: continue
-				print(objname)
 				canvas = infile.Get(os.path.join(fullhistpath, objname))
 				hist = canvas.GetPrimitive(objname)
 				vthresh = int(hist.GetBinCenter(hist.GetMaximumBin()) - hist.GetBinWidth(hist.GetMaximumBin())/2.)
-				print(vthresh)
 				thresholds_per_id_and_chip[int(module.split('_')[1])][int(chip.split('_')[1])] = vthresh
 	del infile
 	return thresholds_per_id_and_chip
@@ -213,7 +260,7 @@ def get_chipsettings_from_json():
 	
 
 
-def plot_ph2acf_rootfile(runnr, modname, tag=''):
+def plot_ph2acf_rootfile(runnr, module_per_id, plotfoldername, tag=''):
 	ROOT.gROOT.SetBatch(True)
 	
 	runnrstr = '%06i' % runnr
@@ -233,12 +280,13 @@ def plot_ph2acf_rootfile(runnr, modname, tag=''):
 	
 	for module in modules:
 		histpath = foldername + module
+		moduleid = int(module.replace('Hybrid_', ''))
+		modulename = module_per_id[moduleid]
 		infile.cd()
 		infile.cd(histpath)
 		chips = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
 		
 		for chip in chips:
-			mod_dummy = module
 			chip_dummy = chip
 			fullhistpath = os.path.join(histpath, chip)
 			infile.cd()
@@ -256,9 +304,9 @@ def plot_ph2acf_rootfile(runnr, modname, tag=''):
 					ROOT.gPad.SetLogz()
 				hist.Draw('colz')
 				ROOT.gStyle.SetOptStat(0);
-				outdir = os.path.join('plots', 'thresholds', modname, '')
+				outdir = os.path.join('plots', 'thresholds', plotfoldername, '')
 				outfilename = canvastitle + tag + '.pdf'
-				outfilename = outfilename.replace('Chip_', 'chip')
+				outfilename = outfilename.replace('Chip_', '%s_chip' % (modulename))
 				ensureDirectory(outdir)
 				outcanvas.SaveAs(outdir + outfilename)
 				outcanvas.SaveAs(outdir + outfilename.replace('pdf', 'png'))
