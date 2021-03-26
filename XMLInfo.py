@@ -178,6 +178,18 @@ class XMLInfo:
             print(setting.getAttribute('name'), setting.childNodes[0].data)
 
 
+    def enable_monitoring( self ):
+            self.set_monitoring(1)
+
+    def disable_monitoring( self ):
+            self.set_monitoring(0)
+
+    def set_monitoring(self, val):
+        for m in self.document.getElementsByTagName('Monitoring'):
+            if str(m.getAttribute('type')) == 'RD53':
+                m.setAttribute('enable',str(val))
+
+
 
 
 def get_modulename_from_txtfilename(txtfilename):

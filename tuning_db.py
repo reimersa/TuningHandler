@@ -71,3 +71,12 @@ class TuningDataFrame(pd.DataFrame):
         self.add_from_file( filename )
         backup_filename = self.overwrite( filename )
         return  backup_filename
+
+
+class TuningDataBase(TuningDataFrame):
+
+    def __init__(self, fname):
+        self._fname = fname
+
+    def update(self):
+            self.update_file( self._fname )
