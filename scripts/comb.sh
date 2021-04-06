@@ -22,7 +22,7 @@ do
 
     # if you want to skip some number, just write it here the if sentence ...
     
-    input="Run${run}_NoiseScan.root"
+    input="../Results/Run${run}_NoiseScan.root"
     output="Results_${run}.root"
 
 
@@ -31,15 +31,16 @@ do
 	continue
     fi    
 
-    echo $input, $output
-    #root -l -q -b 'copyFiles.C("'${input}'", "'${output}'")'
+    echo $input, $output, $COUNTER
+    root -l -q -b 'copyFiles.C("'${input}'", "'${output}'")'
 
-    let COUNTER=COUNTER+1 
+    COUNTER=$((COUNTER+1))
+#    let COUNTER=COUNTER+1 
 		 
 done
 
-#hadd -f combined_${start}_${end}_${COUNTER}.root Results_*.root 
-#rm Results_*.root
+hadd -f ../plots/source_scans_averaged/combined_${start}_${end}_${COUNTER}.root Results_*.root 
+rm Results_*.root
 
 echo "-----------------------------------"
 echo "You added ${COUNTER} files ... you might want to scale your histogram by 1./${COUNTER}"

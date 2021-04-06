@@ -6,7 +6,6 @@ import shutil as sh
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import datetime.datetime as datetime
 
 import json
 from yaml import safe_load
@@ -14,6 +13,7 @@ from yaml import safe_load
 import ROOT
 from ROOT import TFile, TH1D, TCanvas, TIter
 
+from datetime import datetime
 
 from XMLInfo import *
 from settings.typesettings import *
@@ -37,19 +37,30 @@ chiplist = [0, 1, 2, 3]
 modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12', 'modT01', 'modT02', 'modT03', 'modT04']
 
 
+#ids_and_chips_per_module_R1 = {
+#    'mod9': (0, [1, 2]),
+#    'mod10': (1, [0,1,2]),
+#    'mod11': (2, [0, 1, 2]),
+#    'mod7': (3, [0, 1, 2]),
+#    'mod12': (4, [0, 1, 2])
+#}
+
 ids_and_chips_per_module_R1 = {
-    #'mod7': (1, [1])
-    'mod7': (1, [1, 0, 2])
-    #'mod4': (1, [0])
+#    'mod3': (0, [1, 2]),
+#    'mod4': (1, [0,1,2]),
+#    'mod6': (2, [0, 1, 2]),
+#    'mod9': (3, [0, 1, 2]),
+    'mod7': (1, [0, 1])
 }
 
+
 ids_and_chips_per_module_R3 = {
-    #'mod11': (1, [3]),
-    #'mod9':  (2, [3]),
-    #'mod10': (3, [3])
-    #'mod3':   (1, [3]),
-    'modT03': (2, [3]),
-    'mod7':   (3, [3]),
+    'mod9':  (4, [3]),
+    'mod10': (5, [3]),
+    'mod11': (6, [3]),
+    'mod12': (2, [3]),
+    'modT03': (7, [3]),
+    'mod7':   (1, [3]),
 }
 
 
@@ -70,20 +81,21 @@ ids_and_chips_per_module_R3 = {
 def main():
     
     mod_for_tuning = 'modT04'
-    ring_for_tuning = 'singleQuad'
-    prefix_plotfolder = 'modT04_coated'
+    ring_for_tuning = 'R1'
+    prefix_plotfolder = 'R1_5modules_'
     
     reset_all_settings()
-    #run_reset(ring=ring_for_tuning, module=mod_for_tuning)
-    #run_programming(ring=ring_for_tuning, module=mod_for_tuning)
-    #run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='physics')
+#    run_reset(ring=ring_for_tuning, module=mod_for_tuning)
+#    run_programming(ring=ring_for_tuning, module=mod_for_tuning)
+#    run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='physics')
+#    run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='pixelalive')
     
     if ring_for_tuning == 'singleQuad': plotfolderpostfix = ''
     elif ring_for_tuning == 'R1': plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R1.keys()])
     elif ring_for_tuning == 'R3': plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R3.keys()])
     else: raise ValueError('Invalid \'ring_for_tuning\' specified: %s' % (ring_for_tuning))
     
-    run_threshold_tuning(module=mod_for_tuning, ring=ring_for_tuning, plotfoldername=prefix_plotfolder+plotfolderpostfix)
+#    run_threshold_tuning(module=mod_for_tuning, ring=ring_for_tuning, plotfoldername=prefix_plotfolder+plotfolderpostfix)
     
     
     
@@ -98,9 +110,11 @@ def main():
                 tap_settings.append((tap0, tap1, tap2))
                 
                 
-
+    #tap_settings = [(450, 0, 0)]
+    print(len(tap_settings))
     ring            = 'R1'
     positions       = ['5']
+    logfolder_for_ber = logfolder + 'diskR1_5modules_allRingsPowered_mod7/'
     modules_for_ber = ids_and_chips_per_module_R1.keys()
     chips_per_module= {}
     for mod in ids_and_chips_per_module_R1:
@@ -132,14 +146,13 @@ def main():
 #    print tap_settings_per_module_and_chip
             
     
-     do_db = True
-     db = None if not do_db else tdb.TuningDataBase(dbfile)
-#    run_ber_scan(modules=modules_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings_per_module_and_chip=tap_settings_per_module_and_chip, value=84)
+#    do_db = False
+#	 db = None if not do_db else tdb.TuningDataBase(dbfile)
+    run_ber_scan(modules=modules_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings_per_module_and_chip=tap_settings_per_module_and_chip, mylogfolder=logfolder_for_ber, value=290)
 
-    #for moduleidx, module in enumerate(modules_for_ber):
-    #    for chip in chips_per_module[module]:
-    #        pass
-    #        plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings_per_module_and_chip[module][chip])
+    for moduleidx, module in enumerate(modules_for_ber):
+        for chip in chips_per_module[module]:
+            plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings_per_module_and_chip[module][chip], mylogfolder=logfolder_for_ber)
 
 
 def run_threshold_tuning(module, ring, plotfoldername):
@@ -380,14 +393,14 @@ def get_all_info_from_logfile( fname ):
 
 
 
-def plot_ber_results(module, chip, ring, position, tap_settings, groupby = 'TAP0'):
+def plot_ber_results(module, chip, ring, position, tap_settings, mylogfolder, groupby = 'TAP0'):
 
     # group by tap0
     tapdict = {}
     xvalues = []
     yvalues = []
     for tap0, tap1, tap2 in sorted(tap_settings):
-        logfilename = os.path.join(logfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(position), tap0, tap1, tap2))
+        logfilename = os.path.join(mylogfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(position), tap0, tap1, tap2))
         nframes, nber = get_results_from_logfile( logfilename )
 
         if groupby == 'TAP0':
@@ -491,7 +504,7 @@ def read_temp( chip, xml_file, board=0, optical_group=0, hybrid=0 ):
         os.system(monitoring_command)
         time.sleep(1)
         
-        temps = read_temperature)log(chip, log_file, board, optical_group, hybrid)
+        temps = read_temperature_log(chip, log_file, board, optical_group, hybrid)
 
         #remove temp files
         cleanup_command =  f'rm {tmp_file_name} {tmp_xml_file}'
@@ -525,7 +538,7 @@ def read_temperate_log(chip, log_file, board=0, optical_group=0, hybrid=0):
 
 
 
-def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_module_and_chip, mode='time', value=10, db=None):
+def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_module_and_chip, mylogfolder, mode='time', value=10, db=None):
 
     # first, enable TAP1, TAP2
 
@@ -575,7 +588,7 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
                 else: 
                     raise AttributeError('Function \'run_ber_scan()\' received invalid argument for \'mode\': %s. Must be \'time\' or \'frames\'' % mode)
                 command_p = 'CMSITminiDAQ -f %s p' % (xmlfile_for_ber)
-                command_ber = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(logfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
+                command_ber = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(mylogfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
 
                 # execute the OS command
                 print(command_p)
