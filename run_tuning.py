@@ -65,8 +65,9 @@ ids_and_chips_per_module_R3 = {
 }
 
 
-
-
+ids_and_chips_per_module_SAB = {
+        'mod7': (1,[0,1,2,3])
+        }
 
 
 
@@ -104,7 +105,7 @@ def main():
     tap_settings = []
 #    for tap0 in [280, 300, 400]:
 #    for tap0 in [450, 475, 500, 550, 600 ]:
-    for tap0 in [450, 475, 500, 550 ]:
+    for tap0 in [350, 400, 500 ]:
     #for tap0 in [700]:
         for tap1 in range(-150, 150+1, 25):
             for tap2 in range(-150, 150+1, 25):
@@ -115,12 +116,12 @@ def main():
     print(len(tap_settings))
     ring            = 'singleQuad'
     positions       = ['0']
-    logfolder_for_ber = logfolder + 'diskR1_5modules_allRingsPowered_mod7/'
-    module_info_for_ber = ids_and_chips_per_module_R1
+    logfolder_for_ber = logfolder + 'singleAdapterBoard/' #'diskR1_5modules_allRingsPowered_mod7/'
+    module_info_for_ber =  ids_and_chips_per_module_SAB #ids_and_chips_per_module_R1
     modules_for_ber = module_info_for_ber.keys()
     chips_per_module= {}
-    for mod in ids_and_chips_per_module_R1:
-        chips_per_module[mod] = ids_and_chips_per_module_R1[mod][1]
+    for mod in module_info_for_ber: #ids_and_chips_per_module_R1:
+        chips_per_module[mod] = module_info_for_ber[mod][1] #ids_and_chips_per_module_R1[mod][1]
     
     tap_settings_per_module_and_chip = {}
     for moduleidx, module in enumerate(modules_for_ber):
@@ -151,7 +152,7 @@ def main():
     do_db = True
     db = None if not do_db else tdb.TuningDataBase(dbfile)
 
-    run_ber_scan(modules=module_info_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings_per_module_and_chip=tap_settings_per_module_and_chip, mylogfolder=logfolder_for_ber, value=5, db=db)
+    run_ber_scan(modules=module_info_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings_per_module_and_chip=tap_settings_per_module_and_chip, mylogfolder=logfolder_for_ber, value=15, db=db)
 
     for moduleidx, module in enumerate(modules_for_ber):
         for chip in chips_per_module[module]:
@@ -563,6 +564,10 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
     if not settings_are_correct:
         print('Settings were not confirmed as correct, not running BER scan')
         return
+
+    #make sure the log can be written in the appropriate directory
+    if not os.path.exists(mylogfolder):
+        os.mkdir(mylogfolder)
 
     module_info = modules
     modules = modules.keys()
