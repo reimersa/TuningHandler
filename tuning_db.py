@@ -36,7 +36,7 @@ class TuningDataFrame(pd.DataFrame):
         "Append the data in place, with minor type checking"
         #Maybe faster not to convert if info is already a DataFrame or Pandas Series
         new_df = pd.DataFrame( info )
-        new_df['Pos'] = new_df.astype(str)
+        new_df['Pos'] = new_df['Pos'].astype(str)
         self.__dict__.update( self.append( new_df, ignore_index=True ).__dict__ )
 
     #def without_metadata(self):
