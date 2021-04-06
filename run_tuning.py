@@ -19,6 +19,7 @@ from XMLInfo import *
 from settings.typesettings import *
 
 import tuning_db as tdb
+import pandas as pd
 #from settings.chipsettings import *
 
 
@@ -112,10 +113,11 @@ def main():
                 
     #tap_settings = [(450, 0, 0)]
     print(len(tap_settings))
-    ring            = 'R1'
-    positions       = ['5']
+    ring            = 'singleQuad'
+    positions       = ['0']
     logfolder_for_ber = logfolder + 'diskR1_5modules_allRingsPowered_mod7/'
-    modules_for_ber = ids_and_chips_per_module_R1.keys()
+    module_info_for_ber = ids_and_chips_per_module_R1
+    modules_for_ber = module_info_for_ber.keys()
     chips_per_module= {}
     for mod in ids_and_chips_per_module_R1:
         chips_per_module[mod] = ids_and_chips_per_module_R1[mod][1]
@@ -146,14 +148,30 @@ def main():
 #    print tap_settings_per_module_and_chip
             
     
-#    do_db = False
-#	 db = None if not do_db else tdb.TuningDataBase(dbfile)
-    run_ber_scan(modules=modules_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings_per_module_and_chip=tap_settings_per_module_and_chip, mylogfolder=logfolder_for_ber, value=290)
+    do_db = True
+    db = None if not do_db else tdb.TuningDataBase(dbfile)
+
+    run_ber_scan(modules=module_info_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings_per_module_and_chip=tap_settings_per_module_and_chip, mylogfolder=logfolder_for_ber, value=5, db=db)
 
     for moduleidx, module in enumerate(modules_for_ber):
         for chip in chips_per_module[module]:
-            plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings_per_module_and_chip[module][chip], mylogfolder=logfolder_for_ber)
+            pass
+            #plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings_per_module_and_chip[module][chip], mylogfolder=logfolder_for_ber)
 
+def confirm_settings( modules, chips, ring, positions):
+    print('Please verify the following information is correct for the scans:')
+    print(f'module settings: {modules},\nchip settings: {chips},\nring: {ring},\npositions: {positions}')
+    print('enter "y/n"')
+    answer = input()
+    if answer == 'y':
+        print('information confirmed, running tuning')
+        return True
+    elif answer == 'n':
+        print('information was declared incorrect, not running tuning, please fix the desired settings')
+        return False
+    else:
+        print('response not understood, please use "y" or "n", not running tuning.')
+        return False
 
 def run_threshold_tuning(module, ring, plotfoldername):
     reset_xml_files()
@@ -495,19 +513,19 @@ def read_temp( chip, xml_file, board=0, optical_group=0, hybrid=0 ):
   
         xml_object = XMLInfo( xml_file) 
         tmp_xml_file = f'{xml_file}.tmp_for_temp.xml'
-        xml_object.save_as_xml( tmp_xml_file )
-        tmp_file_name = 'tmp_log_for_temperature_readout.txt'
-        monitoring_command = f'CMSITminiDAQ -f {tmp_xml_file} -c physics | tee {tmp_file_name}'
+        xml_object.save_xml_as( tmp_xml_file )
+        log_file_name = 'tmp_log_for_temperature_readout.txt'
+        monitoring_command = f'CMSITminiDAQ -f {tmp_xml_file} -c physics | tee {log_file_name}'
 
         # execute the OS command
         print(monitoring_command)
         os.system(monitoring_command)
         time.sleep(1)
         
-        temps = read_temperature_log(chip, log_file, board, optical_group, hybrid)
+        temps = read_temperature_log(chip, log_file_name, board, optical_group, hybrid)
 
         #remove temp files
-        cleanup_command =  f'rm {tmp_file_name} {tmp_xml_file}'
+        cleanup_command =  f'rm {log_file_name} {tmp_xml_file}'
         os.system(cleanup_command)
         time.sleep(1)
 
@@ -515,7 +533,7 @@ def read_temp( chip, xml_file, board=0, optical_group=0, hybrid=0 ):
      
 
 
-def read_temperate_log(chip, log_file, board=0, optical_group=0, hybrid=0):
+def read_temperature_log(chip, log_file, board=0, optical_group=0, hybrid=0):
 
     #board, optical group, hybrid, chi[
     expected_chip_id = [ board, optical_group, hybrid, chip ]
@@ -527,11 +545,11 @@ def read_temperate_log(chip, log_file, board=0, optical_group=0, hybrid=0):
             l = escape_ansi(l)
             if 'Monitor data for' in l:
                 m = re.search('(?P<board>\d*)/(?P<og>\d*)/(?P<hybrid>\d*)/(?P<chip>\d*)', l )
-                current_chip_id = [ int(m.group('board')), int(m.grou('og')), int(m.group('hybdrid')), int(m.group('chip')) ]
+                current_chip_id = [ int(m.group('board')), int(m.group('og')), int(m.group('hybrid')), int(m.group('chip')) ]
             elif current_chip_id == expected_chip_id and 'TEMPSENS_' in l:
-                m = re.search('TEMPSENS_(?P<sensno>\d):(?P<temp>[^+]*)')
-                sens = int(m.group(sensno))
-                temp = float( m.group(temp).strip() )
+                m = re.search('(?P<sensid>TEMPSENS_\d):(?P<temp>[^+]*)', l)
+                sens = m.group('sensid')
+                temp = float( m.group('temp').strip() )
                 temperatures[sens] = temp
     return temperatures
 
@@ -541,16 +559,22 @@ def read_temperate_log(chip, log_file, board=0, optical_group=0, hybrid=0):
 def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_module_and_chip, mylogfolder, mode='time', value=10, db=None):
 
     # first, enable TAP1, TAP2
+    settings_are_correct = confirm_settings( modules, chips_per_module, ring, positions)
+    if not settings_are_correct:
+        print('Settings were not confirmed as correct, not running BER scan')
+        return
 
+    module_info = modules
+    modules = modules.keys()
     for moduleidx, module in enumerate(modules):
         for chip in chips_per_module[module]:
             tap_settings = tap_settings_per_module_and_chip[module][chip]
             if ring == 'singleQuad':
                 if not len(modules) == 1:
                     raise AttributeError('Trying to run BER in singleQuad mode with mode than one module')
-                module = modules[0]
+                #module = modules[0]
                 xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_%s_%s_%s.xml' % (ring, module, 'ber'))
-                reset_singleQuad_xml_files(type='ber', modules=modules, chips = chips)
+                reset_singleQuad_xml_files(type='ber', modules=modules, chips = chips_per_module[module])
                 prepare_singleQuad_xml_files(type_name='ber', type_setting='scurve', modules=modules)
             elif ring == 'R1':
                 xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_disk%s_%s.xml' % (ring, 'ber'))
@@ -588,21 +612,34 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
                 else: 
                     raise AttributeError('Function \'run_ber_scan()\' received invalid argument for \'mode\': %s. Must be \'time\' or \'frames\'' % mode)
                 command_p = 'CMSITminiDAQ -f %s p' % (xmlfile_for_ber)
-                command_ber = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(mylogfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
+                log_file_name = os.path.join(mylogfolder, f'ber_{ring}_{module}_chip{chip}_pos{positions[moduleidx]}_{tap0}_{tap1}_{tap2}.log')
+                command_ber = f'CMSITminiDAQ -f {xmlfile_for_ber} -c {tuningstepname} {value} BE-FE 2>&1 | tee {log_file_name}' 
+                #command_ber = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(mylogfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
 
+                
+                print(f'checking temperatures before running the scan')
+                temps = read_temp(chip, xmlfile_for_ber, hybrid=module_info[module][0]) 
+                print(f'the temperatures are {temps}')
                 # execute the OS command
                 print(command_p)
                 os.system(command_p)
                 time.sleep(1)
                 start_time = datetime.now()
                 print(command_ber)
-                end_time = datetime.now()
                 os.system(command_ber)
+                end_time = datetime.now()
                 time.sleep(2)
 
                 if db is not None:
-                    run_info = get_all_info_from_logfile( fname )
+                    run_info = get_all_info_from_logfile( log_file_name )
                     run_info.update( {'start_time': start_time, 'end_time': end_time } )
+                    time_format = '%d/%m/%Y %H:%M:%S'
+                    tz_info     = start_time.astimezone().strftime('UTC%z')
+                    run_info.update( { 'start_time_human': start_time.strftime(time_format), 
+                                       'end_time_human':end_time.strftime(time_format), 
+                                       'time_zone_human':tz_info } 
+                                   )
+                    run_info.update( temps )
                     db.add_data( [ run_info ] )
                     db.update()
         
