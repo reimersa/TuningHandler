@@ -13,13 +13,15 @@ from yaml import safe_load
 import ROOT
 from ROOT import TFile, TH1D, TCanvas, TIter
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from XMLInfo import *
 from settings.typesettings import *
 
 import tuning_db as tdb
 import pandas as pd
+
+import plotting as pl
 #from settings.chipsettings import *
 
 
@@ -66,7 +68,7 @@ ids_and_chips_per_module_R3 = {
 
 
 ids_and_chips_per_module_SAB = {
-        'mod7': (1,[0,1,2,3])
+        'mod7': (1,[0,1])
         }
 
 
@@ -105,10 +107,12 @@ def main():
     tap_settings = []
 #    for tap0 in [280, 300, 400]:
 #    for tap0 in [450, 475, 500, 550, 600 ]:
-    for tap0 in [350, 400, 500 ]:
+    for tap0 in [350, 400 ]:
     #for tap0 in [700]:
-        for tap1 in range(-150, 150+1, 25):
-            for tap2 in range(-150, 150+1, 25):
+        for tap1 in [-10,0]:
+            for tap2 in [0,15]:
+        #for tap1 in range(-150, 150+1, 25):
+        #    for tap2 in range(-150, 150+1, 25):
                 tap_settings.append((tap0, tap1, tap2))
                 
                 
@@ -152,16 +156,48 @@ def main():
     do_db = True
     db = None if not do_db else tdb.TuningDataBase(dbfile)
 
-    run_ber_scan(modules=module_info_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings_per_module_and_chip=tap_settings_per_module_and_chip, mylogfolder=logfolder_for_ber, value=15, db=db)
+    last_index = run_ber_scan(modules=module_info_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings_per_module_and_chip=tap_settings_per_module_and_chip, mylogfolder=logfolder_for_ber, value=2, db=db)
+
+    pl.plot_all_tap0s_from_scan(db, last_index)
 
     for moduleidx, module in enumerate(modules_for_ber):
         for chip in chips_per_module[module]:
             pass
             #plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings_per_module_and_chip[module][chip], mylogfolder=logfolder_for_ber)
 
-def confirm_settings( modules, chips, ring, positions):
+def ask_for_name(db):
+    print('Would you like to give this scan a name? [y/n]')
+    answer = input()
+    if answer == 'y':
+        print('please type the name for this scan:')
+        while True:
+            try_name = input()
+            already_exists = tdb.has_named_scan(db, try_name)
+            if not already_exists:
+                print(f'The name {try_name} is unique! continuing')
+                return try_name
+            else:
+                print(f'the name {try_name} already exists in the database, please choose another name:')
+
+    elif answer == 'n':
+        print('information was declared incorrect, not running tuning, please fix the desired settings')
+        return None
+    else:
+        print('response not understood, please use "y" or "n", not running tuning.')
+        return None
+
+
+
+def confirm_settings( modules, chips, ring, positions, n_settings, value):
     print('Please verify the following information is correct for the scans:')
     print(f'module settings: {modules},\nchip settings: {chips},\nring: {ring},\npositions: {positions}')
+    extra_seconds = 6
+    run_time = timedelta(seconds = n_settings*(value+extra_seconds) ) #could try to add in extra time
+    #readable_run_time = run_time.strftime('%H:%M:%S')
+    print(f'Will run {n_settings} settings for {value} seconds each. A minimimum run time of {run_time}, assuming {extra_seconds}s overhead time per scan.')
+    end_time = (datetime.now() + run_time).strftime('%d/%m %H:%M')
+    print(f'The run will finish AFTER {end_time}')
+    time.sleep(2)
     print('enter "y/n"')
     answer = input()
     if answer == 'y':
@@ -556,18 +592,34 @@ def read_temperature_log(chip, log_file, board=0, optical_group=0, hybrid=0):
 
 
 
+def get_num_settings( tap_settings ):
+    n_settings = 0
+    for mod, chip_dict in tap_settings.items():
+        for chip, settings_list in chip_dict.items():
+            n_settings += len(settings_list)
+    return n_settings
+    
 
 def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_module_and_chip, mylogfolder, mode='time', value=10, db=None):
 
-    # first, enable TAP1, TAP2
-    settings_are_correct = confirm_settings( modules, chips_per_module, ring, positions)
+    n_settings = get_num_settings(tap_settings_per_module_and_chip) 
+    settings_are_correct = confirm_settings( modules, chips_per_module, ring, positions, n_settings, value)
     if not settings_are_correct:
         print('Settings were not confirmed as correct, not running BER scan')
         return
 
+    scan_index = db.get_next_index()
+    print(f'Scan Index will be {scan_index}.')
+
+    name = None
+    if db is not None:
+        name = ask_for_name(db)
+
     #make sure the log can be written in the appropriate directory
     if not os.path.exists(mylogfolder):
         os.mkdir(mylogfolder)
+
+
 
     module_info = modules
     modules = modules.keys()
@@ -637,7 +689,7 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
 
                 if db is not None:
                     run_info = get_all_info_from_logfile( log_file_name )
-                    run_info.update( {'start_time': start_time, 'end_time': end_time } )
+                    run_info.update( {'scan_index': scan_index, 'start_time': start_time, 'end_time': end_time } )
                     time_format = '%d/%m/%Y %H:%M:%S'
                     tz_info     = start_time.astimezone().strftime('UTC%z')
                     run_info.update( { 'start_time_human': start_time.strftime(time_format), 
@@ -645,8 +697,12 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
                                        'time_zone_human':tz_info } 
                                    )
                     run_info.update( temps )
+                    if name is not None:
+                        run_info.update( { 'name' : name } )
                     db.add_data( [ run_info ] )
                     db.update()
+
+    return scan_index               
         
 
 

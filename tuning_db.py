@@ -81,11 +81,55 @@ class TuningDataBase():
 
     def __init__(self, fname):
         self._fname = fname
-        self._df = TuningDataFrame()
+        self._index_file_name = os.path.join(self.db_dirname(),'next_index.txt')
+        self._new_info_df = TuningDataFrame()
+        self._stored_info_df = TuningDataFrame()
 
     def update(self):
-            self._df.add_to_file( self._fname )
-            self._df = TuningDataFrame()
+            self._new_info_df.add_to_file( self._fname )
+            self._new_info_df = TuningDataFrame()
 
     def add_data(self, data):
-            self._df.add_data( data )
+            self._new_info_df.add_data( data )
+
+    def db_filename(self):
+        return self._fname
+
+    def db_dirname(self):
+        return os.path.dirname(self._fname)
+
+    def get_info(self):
+        self._stored_info_df.add_from_file( self._fname )
+        df_copy = self._stored_info_df.copy()
+        self._stored_info_df = TuningDataFrame()
+        return df_copy
+        
+
+    def get_next_index(self):
+        #file 'RunNumber.txt' contains number the next run would have, nothing else.
+        new_file = False
+        if os.path.exists(self._index_file_name):
+            open_arg = 'r+'
+        else: 
+            open_arg = 'w'
+            new_file = True
+
+        index = 0
+        with open(self._index_file_name, open_arg) as f:
+            if not new_file:
+                index = int(f.readlines()[0]) 
+                f.seek(0)
+            f.write(f'{index+1}')
+            f.truncate()
+        return index
+
+def has_named_scan(db, name):
+    df = db.get_info()
+    if 'name' in df.columns:
+        names = df['name'].unique()
+        if name in names:
+            return True
+    return False
+
+def calculate_bit_error_rates( df ):
+    return df['NBER']/df['NFrames']
