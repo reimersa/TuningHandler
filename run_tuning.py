@@ -85,21 +85,21 @@ ids_and_chips_per_module_SAB = {
 def main():
     
     mod_for_tuning = 'modT04'
-    ring_for_tuning = 'R1'
+    ring_for_tuning = 'singleQuad'
     prefix_plotfolder = 'R1_5modules_'
     
     reset_all_settings()
-#    run_reset(ring=ring_for_tuning, module=mod_for_tuning)
-#    run_programming(ring=ring_for_tuning, module=mod_for_tuning)
-#    run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='physics')
-#    run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='pixelalive')
+    #run_reset(ring=ring_for_tuning, module=mod_for_tuning)
+    #run_programming(ring=ring_for_tuning, module=mod_for_tuning)
+    #run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='physics')
+    #run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='pixelalive')
     
     if ring_for_tuning == 'singleQuad': plotfolderpostfix = ''
     elif ring_for_tuning == 'R1': plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R1.keys()])
     elif ring_for_tuning == 'R3': plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R3.keys()])
     else: raise ValueError('Invalid \'ring_for_tuning\' specified: %s' % (ring_for_tuning))
     
-#    run_threshold_tuning(module=mod_for_tuning, ring=ring_for_tuning, plotfoldername=prefix_plotfolder+plotfolderpostfix)
+    #run_threshold_tuning(module=mod_for_tuning, ring=ring_for_tuning, plotfoldername=prefix_plotfolder+plotfolderpostfix)
     
     
     
@@ -156,14 +156,15 @@ def main():
     do_db = True
     db = None if not do_db else tdb.TuningDataBase(dbfile)
 
-    last_index = run_ber_scan(modules=module_info_for_ber, chips_per_module=chips_per_module, ring=ring, positions=positions, tap_settings_per_module_and_chip=tap_settings_per_module_and_chip, mylogfolder=logfolder_for_ber, value=2, db=db)
+    last_index = run_ber_scan(modules =module_info_for_ber, 
+                              chips_per_module = chips_per_module, 
+                              ring = ring, positions=positions, 
+                              tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
+                              mylogfolder = logfolder_for_ber, 
+                              value=2, 
+                              db=db)
 
-    pl.plot_all_tap0s_from_scan(db, last_index)
-
-    for moduleidx, module in enumerate(modules_for_ber):
-        for chip in chips_per_module[module]:
-            pass
-            #plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings_per_module_and_chip[module][chip], mylogfolder=logfolder_for_ber)
+    pl.plot_all_taps_from_scan(db, last_index)
 
 def ask_for_name(db):
     print('Would you like to give this scan a name? [y/n]')
