@@ -132,4 +132,4 @@ def has_named_scan(db, name):
     return False
 
 def calculate_bit_error_rates( df ):
-    return df['NBER']/df['NFrames']
+    return df['NBER'].clip(1)/df['NFrames']
