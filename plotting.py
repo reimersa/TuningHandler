@@ -8,12 +8,17 @@ import os
 
 def plot_all_taps_from_scan( db, scan_index, plotdir='plots/test/', 
                                 group_on = ['Module','Chip','TAP0'], cmap = sns.cm.rocket_r):
+    '''Plot heatmaps of relevant quantities from a particular BER scan index.
+    can choose how to orient between Module, Chip, TAP0, TAP1, TAP2, the three 
+    quantities which are "grouped_on" will get be grouped into separate files,
+    the two remaining quantities will form the x and y-axis of the heat-map plot.'''
 
     df = db.get_info()
     df = df[ df['scan_index'] == scan_index ]
     df['Error_Rate'] = tdb.calculate_bit_error_rates( df )
 
-    #should be unique anyway
+    #should be unique anyway since we have already selected the scan
+    #modules don't move mid scan
     pos = df['Pos'].unique()[0]
     ring = df['Ring'].unique()[0]
 
