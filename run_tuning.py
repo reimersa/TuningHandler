@@ -99,7 +99,9 @@ def main():
     elif ring_for_tuning == 'R3': plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R3.keys()])
     else: raise ValueError('Invalid \'ring_for_tuning\' specified: %s' % (ring_for_tuning))
     
-    #run_threshold_tuning(module=mod_for_tuning, ring=ring_for_tuning, plotfoldername=prefix_plotfolder+plotfolderpostfix)
+    run_threshold_tuning = False
+    if run_threshold_tuning:
+        run_threshold_tuning(module=mod_for_tuning, ring=ring_for_tuning, plotfoldername=prefix_plotfolder+plotfolderpostfix)
     
     
     
@@ -107,10 +109,10 @@ def main():
     tap_settings = []
 #    for tap0 in [280, 300, 400]:
 #    for tap0 in [450, 475, 500, 550, 600 ]:
-    for tap0 in [1000,950,900,850,800,750,700,650,600,550,500,450,400,350,300,250 ]:
+    for tap0 in [1000,800,600,550,500,450,400,300 ]:
     #for tap0 in [700]:
-        for tap1 in [0]:
-            for tap2 in [0]:
+        for tap1 in [-120,-80,-40,0,40,80,120]:
+            for tap2 in [-120,-80,-40,0,40,80,120]:
         #for tap1 in range(-150, 150+1, 25):
         #    for tap2 in range(-150, 150+1, 25):
                 tap_settings.append((tap0, tap1, tap2))
@@ -124,8 +126,8 @@ def main():
     module_info_for_ber =  ids_and_chips_per_module_R1 #ids_and_chips_per_module_SAB 
     modules_for_ber = module_info_for_ber.keys()
     chips_per_module= {}
-    for mod in module_info_for_ber: #ids_and_chips_per_module_R1:
-        chips_per_module[mod] = module_info_for_ber[mod][1] #ids_and_chips_per_module_R1[mod][1]
+    for mod in module_info_for_ber: 
+        chips_per_module[mod] = module_info_for_ber[mod][1] 
     
     tap_settings_per_module_and_chip = {}
     for moduleidx, module in enumerate(modules_for_ber):
@@ -161,10 +163,11 @@ def main():
                               ring = ring, positions=positions, 
                               tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
                               mylogfolder = logfolder_for_ber, 
-                              value=5, 
+                              value=30, 
                               db=db)
 
-    pl.plot_all_taps_from_scan(db, last_index)
+    if last_index is not None:
+        pl.plot_all_taps_from_scan(db, last_index)
 
 def ask_for_name(db):
     print('Would you like to give this scan a name? [y/n]')
@@ -581,6 +584,8 @@ def read_temperature_log(chip, log_file, board=0, optical_group=0, hybrid=0):
     with open( log_file, 'r') as f:
         lines = f.readlines()
         for l in lines:
+            if l is None: 
+                continue
             l = escape_ansi(l)
             if 'Monitor data for' in l:
                 m = re.search('(?P<board>\d*)/(?P<og>\d*)/(?P<hybrid>\d*)/(?P<chip>\d*)', l )
@@ -679,7 +684,8 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
 
                 
                 print(f'checking temperatures before running the scan')
-                temps = read_temp(chip, xmlfile_for_ber, hybrid=module_info[module][0]) 
+                hybrid_no = int(module_info[module][0])
+                temps = read_temp(chip, xmlfile_for_ber, hybrid=hybrid_no) 
                 print(f'the temperatures are {temps}')
                 # execute the OS command
                 #print(command_p)
@@ -693,6 +699,7 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
 
                 if db is not None:
                     run_info = get_all_info_from_logfile( log_file_name )
+                    run_info.update( {'FC7_Hybrid_id': hybrid_no } )
                     run_info.update( {'scan_index': scan_index, 'start_time': start_time, 'end_time': end_time } )
                     time_format = '%d/%m/%Y %H:%M:%S'
                     tz_info     = start_time.astimezone().strftime('UTC%z')
