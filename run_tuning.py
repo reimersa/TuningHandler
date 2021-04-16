@@ -40,21 +40,21 @@ chiplist = [0, 1, 2, 3]
 modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12', 'modT01', 'modT02', 'modT03', 'modT04']
 
 
-#ids_and_chips_per_module_R1 = {
-#    'mod9': (0, [1, 2]),
-#    'mod10': (1, [0,1,2]),
-#    'mod11': (2, [0, 1, 2]),
-#    'mod7': (3, [0, 1, 2]),
-#    'mod12': (4, [0, 1, 2])
-#}
-
 ids_and_chips_per_module_R1 = {
+    'mod9': (0, [1, 2]),
+    'mod12': (4, [0, 1, 2]),
+    'mod11': (2, [0, 1, 2]),
+    'mod10': (3, [0,1,2]),
+    'mod7': (1, [0, 1, 2]),
+}
+
+#ids_and_chips_per_module_R1 = {
 #    'mod3': (0, [1, 2]),
 #    'mod4': (1, [0,1,2]),
 #    'mod6': (2, [0, 1, 2]),
 #    'mod9': (3, [0, 1, 2]),
-    'mod7': (1, [0, 1])
-}
+#    'mod7': (1, [0, 1])
+#}
 
 
 ids_and_chips_per_module_R3 = {
@@ -68,7 +68,7 @@ ids_and_chips_per_module_R3 = {
 
 
 ids_and_chips_per_module_SAB = {
-        'mod7': (1,[0,1])
+        'mod7': (1,[0])
         }
 
 
@@ -84,9 +84,9 @@ ids_and_chips_per_module_SAB = {
 
 def main():
     
-    mod_for_tuning = 'modT04'
-    ring_for_tuning = 'singleQuad'
-    prefix_plotfolder = 'R1_5modules_'
+    mod_for_tuning = 'mod7'
+    ring_for_tuning = 'R1'
+    prefix_plotfolder = 'default'
     
     reset_all_settings()
     #run_reset(ring=ring_for_tuning, module=mod_for_tuning)
@@ -107,10 +107,10 @@ def main():
     tap_settings = []
 #    for tap0 in [280, 300, 400]:
 #    for tap0 in [450, 475, 500, 550, 600 ]:
-    for tap0 in [350, 400 ]:
+    for tap0 in [1000,950,900,850,800,750,700,650,600,550,500,450,400,350,300,250 ]:
     #for tap0 in [700]:
-        for tap1 in [-10,0]:
-            for tap2 in [0,15]:
+        for tap1 in [0]:
+            for tap2 in [0]:
         #for tap1 in range(-150, 150+1, 25):
         #    for tap2 in range(-150, 150+1, 25):
                 tap_settings.append((tap0, tap1, tap2))
@@ -118,10 +118,10 @@ def main():
                 
     #tap_settings = [(450, 0, 0)]
     print(len(tap_settings))
-    ring            = 'singleQuad'
-    positions       = ['0']
-    logfolder_for_ber = logfolder + 'singleAdapterBoard/' #'diskR1_5modules_allRingsPowered_mod7/'
-    module_info_for_ber =  ids_and_chips_per_module_SAB #ids_and_chips_per_module_R1
+    ring            = 'R1'
+    positions       = ['R11','R12','R13','R14','R15']
+    logfolder_for_ber = logfolder + 'disk_R1_test/' #'singleAdapterBoard/' #'diskR1_5modules_allRingsPowered_mod7/'
+    module_info_for_ber =  ids_and_chips_per_module_R1 #ids_and_chips_per_module_SAB 
     modules_for_ber = module_info_for_ber.keys()
     chips_per_module= {}
     for mod in module_info_for_ber: #ids_and_chips_per_module_R1:
@@ -137,10 +137,10 @@ def main():
                 t0 = s[0]
                 t1 = s[1]
                 t2 = s[2]
-                if module == 'mod7' and chip == 1:
-                    t0 = min(t0+130, 1023)
-                if module == 'mod7' and chip == 2:
-                    t0 = min(t0-60, 1023)
+                #if module == 'mod7' and chip == 1:
+                #    t0 = min(t0+130, 1023)
+                #if module == 'mod7' and chip == 2:
+                #    t0 = min(t0-60, 1023)
 
                 settings_per_chip[chip].append((t0, t1, t2))
 
@@ -161,7 +161,7 @@ def main():
                               ring = ring, positions=positions, 
                               tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
                               mylogfolder = logfolder_for_ber, 
-                              value=2, 
+                              value=5, 
                               db=db)
 
     pl.plot_all_taps_from_scan(db, last_index)
@@ -551,6 +551,7 @@ def read_temp( chip, xml_file, board=0, optical_group=0, hybrid=0 ):
   
         xml_object = XMLInfo( xml_file) 
         tmp_xml_file = f'{xml_file}.tmp_for_temp.xml'
+        xml_object.enable_monitoring()
         xml_object.save_xml_as( tmp_xml_file )
         log_file_name = 'tmp_log_for_temperature_readout.txt'
         monitoring_command = f'CMSITminiDAQ -f {tmp_xml_file} -c physics | tee {log_file_name}'
@@ -644,6 +645,15 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
             xmlobject.keep_only_modules_by_modulename([module])
             xmlobject.keep_only_chips_by_modulename(module, [chip])
 
+            # assemble the OS command
+            if mode == 'time': 
+                xmlobject.set_daq_settings('byTime', '1')
+            elif mode == 'frames': 
+                xmlobject.set_daq_settings('byTime', '0')
+            else: 
+                raise AttributeError('Function \'run_ber_scan()\' received invalid argument for \'mode\': %s. Must be \'time\' or \'frames\'' % mode)
+            xmlobject.set_daq_settings('framesORtime', str(value))
+
 
 
             # now, in a loop, set TAP values to scan through
@@ -661,27 +671,20 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
                     cml_cfg += 128 #TAP2 inversion is 7th bit
                 xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_CONFIG', str(cml_cfg) )
                 xmlobject.save_xml_as(xmlfile_for_ber)
-
-                # assemble the OS command
-                if mode == 'time': 
-                    tuningstepname = 'prbstime'
-                elif mode == 'frames': 
-                    tuningstepname = 'prbsframes'
-                else: 
-                    raise AttributeError('Function \'run_ber_scan()\' received invalid argument for \'mode\': %s. Must be \'time\' or \'frames\'' % mode)
-                command_p = 'CMSITminiDAQ -f %s p' % (xmlfile_for_ber)
+                
+                #command_p = 'CMSITminiDAQ -f %s p' % (xmlfile_for_ber) # Arne: Not necessary anymore?
                 log_file_name = os.path.join(mylogfolder, f'ber_{ring}_{module}_chip{chip}_pos{positions[moduleidx]}_{tap0}_{tap1}_{tap2}.log')
-                command_ber = f'CMSITminiDAQ -f {xmlfile_for_ber} -c {tuningstepname} {value} BE-FE 2>&1 | tee {log_file_name}' 
-                #command_ber = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, tuningstepname, value, os.path.join(mylogfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
+                command_ber = f'CMSITminiDAQ -f {xmlfile_for_ber} -c bertest 2>&1 | tee {log_file_name}' 
+                #command_ber = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, , value, os.path.join(mylogfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
 
                 
                 print(f'checking temperatures before running the scan')
                 temps = read_temp(chip, xmlfile_for_ber, hybrid=module_info[module][0]) 
                 print(f'the temperatures are {temps}')
                 # execute the OS command
-                print(command_p)
-                os.system(command_p)
-                time.sleep(1)
+                #print(command_p)
+                #os.system(command_p)
+                #time.sleep(1)
                 start_time = datetime.now()
                 print(command_ber)
                 os.system(command_ber)
