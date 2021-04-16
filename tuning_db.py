@@ -132,9 +132,12 @@ def has_named_scan(db, name):
     return False
 
 def calculate_bit_error_rates( df ):
-    '''Calculate a new row of the dataframe giving the Bit Error Rates
+    '''Calculate a new row of the dataframe giving the Bit Error Rate (or its upper limit)
     From the total number of frames and errors'''
-    return df['NBER'].clip(1)/df['NFrames']
+
+    ber =  df['NBER'].clip(1)/df['NFrames']
+    masked_ber =  ber.mask( ber < 0 )
+    return masked_ber
 
 def combine_ber_measurements( df, group_on ):
     '''For independent measurements taken under (supposedly) equivalent settings, combine
