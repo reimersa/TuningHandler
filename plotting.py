@@ -55,7 +55,7 @@ def plot_all_taps_from_scan( db, scan_index, plotdir='plots/test/',
                     pivot = pivot.fillna(2)
 
                     min_val = pivot.values.min()
-                    max_val = max(min_val*10, pivot.values.max())
+                    max_val = 10000000/g3_group['NFrames'].max() #Ph2_ACF reports a maximum of 10M errors, so this is the highest value that will be reported #max(min_val*10, pivot.values.max())
                     colbar_norm = LogNorm(vmin=min_val, vmax=max_val)
 
                     ax = sns.heatmap(pivot, annot=True, norm=colbar_norm, cmap=cmap, linewidth=0.5, mask= mask )
@@ -75,4 +75,4 @@ if __name__ == '__main__':
 
     import tuning_db as tdb
     db = tdb.TuningDataBase('db/ber.json')
-    plot_all_taps_from_scan(db, 34, group_on=['Module','TAP1','TAP2'])
+    plot_all_taps_from_scan(db, 37, group_on=['Module','TAP1','TAP2'])
