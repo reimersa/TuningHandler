@@ -42,8 +42,8 @@ def plot_all_taps_from_scan( db, scan_index, plotdir='plots/test/',
     for group_values, file_group in df.groupby(group_on):
         #should be unique anyway since we have already selected the scan
         #modules don't move mid scan
-        pos = df['Pos'].unique()[0]
-        ring = df['Ring'].unique()[0]
+        ring = file_group['Ring'].unique()[0]
+        pos  = file_group['Pos'].unique()[0]
 
         #make sure group_values is always a tuple and not just a string
         if len(group_on) <= 1:
@@ -81,6 +81,20 @@ def plot_all_taps_from_scan( db, scan_index, plotdir='plots/test/',
         
 
 
+def get_module_positions( df ):
+    ''' get lists of modules, ring, positions'''
+
+    mdf = df[['Module','Ring','Pos']] #No need for other columns
+    mods = []
+    rings = []
+    positions = []
+    for modname, mod_group in df.groupby('Module'):
+            mods += [ modname ]
+            rings = [ mod_group['Ring'].unqiue() ]
+            positions =[ mod_group['Pos'].unique() ]
+    return (mods, rings, positions)
+            
+            
 
 def make_ber_heatmap(  pivots, **kwargs ):
     '''make a single Bit Error Rate heatmap object from a dataframe, as a function of the two
