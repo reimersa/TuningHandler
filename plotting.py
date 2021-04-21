@@ -17,10 +17,6 @@ def plot_all_taps_from_scan( db, scan_index, plotdir='plots/test/',
     df = df[ df['scan_index'] == scan_index ]
     df['Error_Rate'] = tdb.calculate_bit_error_rates( df )
 
-    #should be unique anyway since we have already selected the scan
-    #modules don't move mid scan
-    pos = df['Pos'].unique()[0]
-    ring = df['Ring'].unique()[0]
 
 
     pivots = ['TAP0','TAP1','TAP2','Chip','Module']
@@ -44,6 +40,11 @@ def plot_all_taps_from_scan( db, scan_index, plotdir='plots/test/',
         
 
     for group_values, file_group in df.groupby(group_on):
+        #should be unique anyway since we have already selected the scan
+        #modules don't move mid scan
+        pos = df['Pos'].unique()[0]
+        ring = df['Ring'].unique()[0]
+
         #make sure group_values is always a tuple and not just a string
         if len(group_on) <= 1:
             group_values = tuple( [group_values] ) 
@@ -52,7 +53,7 @@ def plot_all_taps_from_scan( db, scan_index, plotdir='plots/test/',
         #Might be nice to handle that somehow
         min_limit = 1./file_group['NFrames'].max()
         param_value_string = ', '.join([ f'{param} = {value}' for param, value in zip(group_on, group_values) ])
-        title = f'{param_value_string}| BER lower limit: {min_limit:.1e}' 
+        title = f'{param_value_string}, Position {pos}| BER lower limit: {min_limit:.1e}' 
 
         fig = None
         do_single_plot = ( len(grid) == 0 )
@@ -71,7 +72,7 @@ def plot_all_taps_from_scan( db, scan_index, plotdir='plots/test/',
             
 
         param_value_string = '_'.join([ f'{param}.{value}' for param, value in zip(group_on, group_values) ])
-        pltname_base = os.path.join(plotdir, f'BER_{ring}_{param_value_string}')
+        pltname_base = os.path.join(plotdir, f'BER_{ring}_{pos}_{param_value_string}')
         plt.savefig(f'{pltname_base}.png')
         plt.savefig(f'{pltname_base}.pdf')
 
