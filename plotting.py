@@ -55,21 +55,19 @@ def plot_all_taps_from_scan( db, scan_index, plotdir='plots/test/',
         param_value_string = ', '.join([ f'{param} = {value}' for param, value in zip(group_on, group_values) ])
         title = f'{param_value_string}, Position {pos}| BER lower limit: {min_limit:.1e}' 
 
+        colour_norm = get_heatmap_ber_norms( file_group )
+
         fig = None
         do_single_plot = ( len(grid) == 0 )
+
         if do_single_plot: 
             fig = plt.figure()
-
             ax = make_ber_heatmap(  pivots, data=file_group, cmap=cmap) 
             ax.set_title(title)
 
         else: #do a heatmap grid
-            fg = sns.FacetGrid(file_group, col=axes[0], row=axes[1], margin_titles=True)
-            fg.map_dataframe(make_ber_heatmap, pivots, cmap=cmap)
-            fg.fig.suptitle( title )
-            fg.fig.tight_layout()
+            fg = do_facetgrid_heatmaps( file_group, pivots, title, col=axes[0], row=axes[1],  norm=colour_norm, cmap=cmap )
             fig = fg.fig
-            
 
         param_value_string = '_'.join([ f'{param}.{value}' for param, value in zip(group_on, group_values) ])
         pltname_base = os.path.join(plotdir, f'BER_{ring}_{pos}_{param_value_string}')
@@ -80,6 +78,22 @@ def plot_all_taps_from_scan( db, scan_index, plotdir='plots/test/',
             fig.clear()
         
 
+        
+def do_facetgrid_heatmaps( dataframe, pivots, title, col, row, **kwargs ):
+
+    fg = sns.FacetGrid( dataframe, col=col, row=row, margin_titles=True, sharex=True, sharey=True)
+
+    cbar_rect = [ .96, .07, .02, .86 ]
+    main_rect = [ 0, 0, cbar_rect[0] - 0.02, 1 ]
+    cbar_ax = cbar_ax = fg.fig.add_axes( cbar_rect) 
+    fg.map_dataframe(make_ber_heatmap, pivots, cbar_ax=cbar_ax, **kwargs)
+    fg.fig.suptitle( title )
+
+    fg.fig.subplots_adjust( right=main_rect[2] )
+    fg.fig.tight_layout( rect=main_rect )
+    fig = fg.fig
+    return fg 
+           
 
 def get_module_positions( df ):
     ''' get lists of modules, ring, positions'''
@@ -94,6 +108,18 @@ def get_module_positions( df ):
             positions =[ mod_group['Pos'].unique() ]
     return (mods, rings, positions)
             
+def get_heatmap_ber_norms( df ):
+    '''figure out the scaling to be used for heatmaps, 
+    based on the Bit Error Rates and NFrames. return a norm object'''
+
+    ber_vals = df['Error_Rate'].fillna(2) # need positive values for log scale, real values should be < 1
+    min_val = ber_vals.min()
+    max_val = 10e6/df['NFrames'].max() #Ph2_ACF reports a maximum of 10M errors, so this should be the highest reports value)
+    colbar_norm = LogNorm(vmin=min_val, vmax=max_val)
+
+    return colbar_norm
+
+    
             
 
 def make_ber_heatmap(  pivots, **kwargs ):
@@ -120,13 +146,8 @@ def make_ber_heatmap(  pivots, **kwargs ):
         pivot = df.pivot( pivots[0], pivots[1], 'Error_Rate')
 
     mask  = pivot.isna()
-    pivot = pivot.fillna(2)
-
-    min_val = pivot.values.min()
-    max_val = 10000000/df['NFrames'].max() #Ph2_ACF reports a maximum of 10M errors, so this is the highest value that will be reported #max(min_val*10, pivot.values.max())
-    colbar_norm = LogNorm(vmin=min_val, vmax=max_val)
-
-    ax = sns.heatmap(pivot, annot=True, annot_kws={'fontsize':'xx-small'}, fmt='.0e', norm=colbar_norm, linewidth=0.5, mask= mask, **kwargs )
+    ax = sns.heatmap(pivot, annot=True, annot_kws={'fontsize':'xx-small'}, fmt='.0e',  linewidth=0.5, mask= mask, **kwargs )
+    
     return ax
 
 
