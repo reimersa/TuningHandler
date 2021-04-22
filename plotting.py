@@ -108,9 +108,11 @@ def make_ber_heatmap(  pivots, **kwargs ):
 
     except Exception as e:
 
-        #in this case we can recalculate the total Error Rate by summing up the cases appropriately
-        print(f'Combining mulitple runs for {group_on[0]}={g1name},{group_on[1]}={g2name},{group_on[2]}={g3name}')
-        print(f'The Original data is:\n {df.to_string()}')
+        print(f' Encountered exception while creating pivots for heatmap \n{e}')
+
+        #in this case we can try recalculate the total Error Rate by summing up the cases appropriately
+        print(f'Trying to combine mulitple runs.')
+        print(f'The original data was:\n {df.to_string()}')
         print(f'Calculating combined BER')
         df = tdb.combine_ber_measurements( df, pivots)
         df['Error_Rate'] = tdb.calculate_bit_error_rates( df )
