@@ -41,11 +41,11 @@ modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12',
 
 
 ids_and_chips_per_module_R1 = {
-    'mod9': (0, [1, 2]),
+    'mod10': (0, [1,2]), 
     'mod12': (4, [0, 1, 2]),
-    'mod11': (2, [0, 1, 2]),
-    'mod10': (3, [0,1,2]),
-    'mod7': (1, [0, 1, 2]),
+    'mod7': (2,  [0, 1, 2]),
+    'mod9': (3, [0,1, 2]),
+    'mod11': (1, [0, 1, 2]), #new
 }
 
 #ids_and_chips_per_module_R1 = {
@@ -68,7 +68,7 @@ ids_and_chips_per_module_R3 = {
 
 
 ids_and_chips_per_module_SAB = {
-        'mod7': (1,[0])
+        'mod7': (1,[0,1,2,3])
         }
 
 
@@ -99,8 +99,8 @@ def main():
     elif ring_for_tuning == 'R3': plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R3.keys()])
     else: raise ValueError('Invalid \'ring_for_tuning\' specified: %s' % (ring_for_tuning))
     
-    run_threshold_tuning = False
-    if run_threshold_tuning:
+    do_threshold_tuning = False
+    if do_threshold_tuning:
         run_threshold_tuning(module=mod_for_tuning, ring=ring_for_tuning, plotfoldername=prefix_plotfolder+plotfolderpostfix)
     
     
@@ -109,10 +109,10 @@ def main():
     tap_settings = []
 #    for tap0 in [280, 300, 400]:
 #    for tap0 in [450, 475, 500, 550, 600 ]:
-    for tap0 in [1000,800,600,550,500,450,400,300 ]:
+    for tap0 in [1000,800,600,400,200]:#[1000,800,600,550,500,450,400,300 ]:
     #for tap0 in [700]:
-        for tap1 in [-120,-80,-40,0,40,80,120]:
-            for tap2 in [-120,-80,-40,0,40,80,120]:
+        for tap1 in [0]:#[-120,-80,-40,0,40,80,120]:
+            for tap2 in [0]:#[-120,-80,-40,0,40,80,120]:
         #for tap1 in range(-150, 150+1, 25):
         #    for tap2 in range(-150, 150+1, 25):
                 tap_settings.append((tap0, tap1, tap2))
@@ -120,8 +120,8 @@ def main():
                 
     #tap_settings = [(450, 0, 0)]
     print(len(tap_settings))
-    ring            = 'R1'
-    positions       = ['R11','R12','R13','R14','R15']
+    ring            = 'R1' #'singleQuad'
+    positions       = ['R11','R12','R13','R14','R15'] #['0']
     logfolder_for_ber = logfolder + 'disk_R1_test/' #'singleAdapterBoard/' #'diskR1_5modules_allRingsPowered_mod7/'
     module_info_for_ber =  ids_and_chips_per_module_R1 #ids_and_chips_per_module_SAB 
     modules_for_ber = module_info_for_ber.keys()
@@ -158,14 +158,16 @@ def main():
     do_db = True
     db = None if not do_db else tdb.TuningDataBase(dbfile)
 
+    #last_index = 39
     last_index = run_ber_scan(modules =module_info_for_ber, 
                               chips_per_module = chips_per_module, 
                               ring = ring, positions=positions, 
                               tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
                               mylogfolder = logfolder_for_ber, 
-                              value=30, 
+                              value=6, 
                               db=db)
 
+	
     if last_index is not None:
         pl.plot_all_taps_from_scan(db, last_index)
 
@@ -235,7 +237,7 @@ def run_threshold_tuning(module, ring, plotfoldername):
     # reset all VThreshold_LINs to 400
     for module in id_per_module:
         fresh_thresholds = {}
-        if ring == 'SingleQuad':
+        if ring == 'singleQuad':
             for chip in chiplist:
                 fresh_thresholds[chip] = '400'
         elif ring == 'R1' or ring == 'R3':
