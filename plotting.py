@@ -6,7 +6,7 @@ from matplotlib.colors import LogNorm
 import tuning_db as tdb
 import os
 
-def plot_all_taps_from_scan( db, scan_index, plotdir='plots/test/', 
+def plot_all_taps_from_scan(  db, scan_index, plotdir='plots/test/', 
                                 group_on = ['Module','Chip','TAP0'], cmap = sns.cm.rocket_r, grid=[]):
     '''Plot heatmaps of relevant quantities from a particular BER scan index.
     can choose how to orient between Module, Chip, TAP0, TAP1, TAP2, the three 
@@ -28,6 +28,8 @@ def plot_all_taps_from_scan( db, scan_index, plotdir='plots/test/',
     
     axes = [None, None]
     for idx, axis in enumerate(grid):
+        if axis is None:
+            continue
         if axis not in group_on:
             raise ValueError(f'Cannot use {axis} as a grid axis, must be one of the "grouped on" values: {group_on}')
         if idx > 1:
@@ -81,7 +83,9 @@ def plot_all_taps_from_scan( db, scan_index, plotdir='plots/test/',
         
 def do_facetgrid_heatmaps( dataframe, pivots, title, col, row, **kwargs ):
 
-    fg = sns.FacetGrid( dataframe, col=col, row=row, margin_titles=True, sharex=True, sharey=True)
+    do_sharex = ( pivots[0] == 'Chip' )
+    do_sharey = ( pivots[1] == 'Chip' )
+    fg = sns.FacetGrid( dataframe, col=col, row=row, margin_titles=True, sharex=do_sharex, sharey=do_sharey)
 
     cbar_rect = [ .96, .07, .02, .86 ]
     main_rect = [ 0, 0, cbar_rect[0] - 0.02, 1 ]
@@ -151,10 +155,13 @@ def make_ber_heatmap(  pivots, **kwargs ):
     return ax
 
 
+def plot_tap0_only_scan_from_index( db, scan_index, plotdir='plots/test/', cmap = sns.cm.rocket_r ):
 
+    plot_all_taps_from_scan(db, scan_index, plotdir=plotdir, group_on = ['TAP1','TAP2','Module'], grid=['Module',None])
            
 if __name__ == '__main__':
 
     import tuning_db as tdb
     db = tdb.TuningDataBase('db/ber.json')
-    plot_all_taps_from_scan(db, 39, group_on=['Module','Chip','TAP0'], grid=['TAP0','Chip'])
+    #plot_all_taps_from_scan(db, 39, group_on=['Module','Chip','TAP0'], grid=['TAP0','Chip'])
+    plot_tap0_only_scan_from_index(db, 41)
