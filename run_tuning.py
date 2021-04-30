@@ -109,10 +109,10 @@ def main():
     tap_settings = []
 #    for tap0 in [280, 300, 400]:
 #    for tap0 in [450, 475, 500, 550, 600 ]:
-    for tap0 in [1000,800,600,550,500,450,400,300 ]:
+    for tap0 in [1000]:#[1000,800,600,550,500,450,400,300 ]:
     #for tap0 in [700]:
-        for tap1 in [-120,-80,-40,0,40,80,120]:
-            for tap2 in [-120,-80,-40,0,40,80,120]:
+        for tap1 in [0]:#[-120,-80,-40,0,40,80,120]:
+            for tap2 in [0]:#[-120,-80,-40,0,40,80,120]:
         #for tap1 in range(-150, 150+1, 25):
         #    for tap2 in range(-150, 150+1, 25):
                 tap_settings.append((tap0, tap1, tap2))
@@ -164,11 +164,9 @@ def main():
                               ring = ring, positions=positions, 
                               tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
                               mylogfolder = logfolder_for_ber, 
-                              value=10, 
+                              value=2, 
                               db=db)
 
-    last_index = 42
-    
     if last_index is not None:
         pl.plot_all_taps_from_scan(db, last_index)
 
@@ -564,7 +562,7 @@ def plot_ber_results(module, chip, ring, position, tap_settings, mylogfolder, gr
 
 
 
-def read_temp( chip, xml_file, board=0, optical_group=0, hybrid=0 ):
+def read_temps_and_voltages( chip, xml_file, board=0, optical_group=0, hybrid=0 ):
   
         xml_object = XMLInfo( xml_file) 
         tmp_xml_file = f'{xml_file}.tmp_for_temp.xml'
@@ -578,30 +576,30 @@ def read_temp( chip, xml_file, board=0, optical_group=0, hybrid=0 ):
         os.system(monitoring_command)
         time.sleep(1)
         
-        temps = read_temperature_log(chip, log_file_name, board, optical_group, hybrid)
+        temps_and_voltages = read_monitoring_log(chip, log_file_name, board, optical_group, hybrid)
 
         #remove temp files
         cleanup_command =  f'rm {log_file_name} {tmp_xml_file}'
         os.system(cleanup_command)
         time.sleep(1)
 
-        return temps
+        return temps_and_voltages
      
 
 
-def read_temperature_log(chip, log_file, board=0, optical_group=0, hybrid=0):
+def read_monitoring_log(chip, log_file, board=0, optical_group=0, hybrid=0):
 
     #board, optical group, hybrid, chi[
     expected_chip_id = [ board, optical_group, hybrid, chip ]
     current_chip_id = [-1,-1,-1,-1]
-    temperatures = {}
+    temps_and_voltages = {}
     with open( log_file, 'r') as f:
         lines = None
         try:
             lines = f.readlines()
         except Exception as e:
-            print(f'''Caught an exception while reading temperature log file {fname}.
-                    BER will not be read for this run; temperatures will be repored as {temperatures}.
+            print(f'''Caught an exception while reading monitoring log file {fname}.
+                    temperatures and voltages will be reported as {temps_and_voltages}.
                     The error was:\n{e}''')
 
         if lines is not None:    
@@ -610,16 +608,38 @@ def read_temperature_log(chip, log_file, board=0, optical_group=0, hybrid=0):
                 if l is None: 
                     continue
                 l = escape_ansi(l)
-                if 'Monitor data for' in l:
-                    m = re.search('(?P<board>\d*)/(?P<og>\d*)/(?P<hybrid>\d*)/(?P<chip>\d*)', l )
-                    current_chip_id = [ int(m.group('board')), int(m.group('og')), int(m.group('hybrid')), int(m.group('chip')) ]
-                elif current_chip_id == expected_chip_id and 'TEMPSENS_' in l:
-                    m = re.search('(?P<sensid>TEMPSENS_\d):(?P<temp>[^+]*)', l)
-                    sens = m.group('sensid')
-                    temp = float( m.group('temp').strip() )
-                    temperatures[sens] = temp
 
-    return temperatures
+                if 'Monitor data for' in l: #Identifying the chip
+                    m = re.search('(?P<board>\d*)/(?P<og>\d*)/(?P<hybrid>\d*)/(?P<chip>\d*)', l )
+                    if m is not None:
+                        current_chip_id = [ int(m.group('board')), int(m.group('og')), int(m.group('hybrid')), int(m.group('chip')) ]
+                    else:
+                        #this shouldn't ever happen
+                        print(f'WARNING: There may be an issue with the regex parsing of chip IDs')
+
+                elif current_chip_id == expected_chip_id and 'TEMPSENS_' in l: #temperatures
+                    m = re.search('(?P<sensid>TEMPSENS_\d):(?P<temp>[^+]*)', l)
+                    if m is not None:
+                        sens = m.group('sensid')
+                        temp = float( m.group('temp').strip() )
+                        temps_and_voltages[sens] = temp
+                    else:
+                        #This shouldn't ever happen
+                        print(f'WARNING: There may be an issue with the regex parsing of temperatures')
+
+                elif current_chip_id == expected_chip_id and 'VOUT_' in l: #shuntLDO values
+                    m = re.search('(?P<Vtype>VOUT[^:\s]*ShuLDO):(?P<voltage>[^+]*)', l)
+                    if m is not None:
+                        vsource = m.group('Vtype')
+                        voltage = float( m.group('voltage').strip() )*2 #multiply by 2 because for some reason the printed values are half of the actual ones?
+                        temps_and_voltages[vsource] = voltage
+                    else:
+                        #there are some messages printed about the VOUT which don't actually containt the info, we want 
+                        #"	--> Hybrid voltage: 0.000 V (corresponds to half VOUT_dig_ShuLDO of the chip)"
+                        pass
+
+
+    return temps_and_voltages
 
 
 
@@ -709,8 +729,8 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
                 
                 print(f'checking temperatures before running the scan')
                 hybrid_no = int(module_info[module][0])
-                temps = read_temp(chip, xmlfile_for_ber, hybrid=hybrid_no) 
-                print(f'the temperatures are {temps}')
+                temps_and_voltages = read_temps_and_voltages(chip, xmlfile_for_ber, hybrid=hybrid_no) 
+                print(f'the temperatures and voltages are {temps_and_voltages}')
                 # execute the OS command
                 #print(command_p)
                 #os.system(command_p)
@@ -724,6 +744,12 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
                 if db is not None:
                     run_info = get_all_info_from_logfile( log_file_name )
                     run_info.update( {'FC7_Hybrid_id': hybrid_no } )
+
+                    this_position = positions[moduleidx]
+                    other_positions = list(positions)
+                    other_positions.remove(this_position)
+                    run_info.update( {'other_powered_modules': other_positions} ) #storing the array object should be fine
+
                     run_info.update( {'scan_index': scan_index, 'start_time': start_time, 'end_time': end_time } )
                     time_format = '%d/%m/%Y %H:%M:%S'
                     tz_info     = start_time.astimezone().strftime('UTC%z')
@@ -731,7 +757,7 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
                                        'end_time_human':end_time.strftime(time_format), 
                                        'time_zone_human':tz_info } 
                                    )
-                    run_info.update( temps )
+                    run_info.update( temps_and_voltages )
                     if name is not None:
                         run_info.update( { 'name' : name } )
                     db.add_data( [ run_info ] )
