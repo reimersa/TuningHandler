@@ -109,10 +109,10 @@ def main():
     tap_settings = []
 #    for tap0 in [280, 300, 400]:
 #    for tap0 in [450, 475, 500, 550, 600 ]:
-    for tap0 in [1000,800,600,400,200]:#[1000,800,600,550,500,450,400,300 ]:
+    for tap0 in [1000,800,600,550,500,450,400,300 ]:
     #for tap0 in [700]:
-        for tap1 in [0]:#[-120,-80,-40,0,40,80,120]:
-            for tap2 in [0]:#[-120,-80,-40,0,40,80,120]:
+        for tap1 in [-120,-80,-40,0,40,80,120]:
+            for tap2 in [-120,-80,-40,0,40,80,120]:
         #for tap1 in range(-150, 150+1, 25):
         #    for tap2 in range(-150, 150+1, 25):
                 tap_settings.append((tap0, tap1, tap2))
@@ -164,10 +164,11 @@ def main():
                               ring = ring, positions=positions, 
                               tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
                               mylogfolder = logfolder_for_ber, 
-                              value=6, 
+                              value=10, 
                               db=db)
 
-	
+    last_index = 42
+    
     if last_index is not None:
         pl.plot_all_taps_from_scan(db, last_index)
 
@@ -418,13 +419,24 @@ def get_results_from_logfile( fname ):
     nframes = -1
     nber    = -1
     with open( fname, 'r') as f:
-        lines = f.readlines()
-        for l in lines:
-            l = escape_ansi(l)
-            if 'Final number of PRBS frames sent:' in l:
-                nframes = int(l.split(' ')[-1])
-            elif 'Final BER counter:' in l:
-                nber = int(l.split(' ')[-1])
+
+        lines = None
+        try:
+            lines = f.readlines()
+        except Exception as e:
+            print(f'''Caught an exception while reading BER log file {fname}.
+                    BER will not be read for this run, will set to nframes={nframes}, nber={nber}.
+                    The error was:\n{e}''')
+
+        if lines is not None:
+
+            for l in lines:
+                l = escape_ansi(l)
+                if 'Final number of PRBS frames sent:' in l:
+                    nframes = int(l.split(' ')[-1])
+                elif 'Final BER counter:' in l:
+                    nber = int(l.split(' ')[-1])
+
     return (nframes, nber)
 
 def get_settings_from_logfile( fname ):
@@ -584,19 +596,29 @@ def read_temperature_log(chip, log_file, board=0, optical_group=0, hybrid=0):
     current_chip_id = [-1,-1,-1,-1]
     temperatures = {}
     with open( log_file, 'r') as f:
-        lines = f.readlines()
-        for l in lines:
-            if l is None: 
-                continue
-            l = escape_ansi(l)
-            if 'Monitor data for' in l:
-                m = re.search('(?P<board>\d*)/(?P<og>\d*)/(?P<hybrid>\d*)/(?P<chip>\d*)', l )
-                current_chip_id = [ int(m.group('board')), int(m.group('og')), int(m.group('hybrid')), int(m.group('chip')) ]
-            elif current_chip_id == expected_chip_id and 'TEMPSENS_' in l:
-                m = re.search('(?P<sensid>TEMPSENS_\d):(?P<temp>[^+]*)', l)
-                sens = m.group('sensid')
-                temp = float( m.group('temp').strip() )
-                temperatures[sens] = temp
+        lines = None
+        try:
+            lines = f.readlines()
+        except Exception as e:
+            print(f'''Caught an exception while reading temperature log file {fname}.
+                    BER will not be read for this run; temperatures will be repored as {temperatures}.
+                    The error was:\n{e}''')
+
+        if lines is not None:    
+
+            for l in lines:
+                if l is None: 
+                    continue
+                l = escape_ansi(l)
+                if 'Monitor data for' in l:
+                    m = re.search('(?P<board>\d*)/(?P<og>\d*)/(?P<hybrid>\d*)/(?P<chip>\d*)', l )
+                    current_chip_id = [ int(m.group('board')), int(m.group('og')), int(m.group('hybrid')), int(m.group('chip')) ]
+                elif current_chip_id == expected_chip_id and 'TEMPSENS_' in l:
+                    m = re.search('(?P<sensid>TEMPSENS_\d):(?P<temp>[^+]*)', l)
+                    sens = m.group('sensid')
+                    temp = float( m.group('temp').strip() )
+                    temperatures[sens] = temp
+
     return temperatures
 
 
