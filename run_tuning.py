@@ -45,7 +45,8 @@ ids_and_chips_per_module_R1 = {
     'mod12': (4, [0, 1, 2]),
     'mod7': (2,  [0, 1, 2]),
     'mod9': (3, [0,1, 2]),
-    'mod11': (1, [0, 1, 2]), #new
+    'modT03' : (1, [0, 1, 2] )
+    #'mod11': (1, [0, 1, 2]), #new
 }
 
 #ids_and_chips_per_module_R1 = {
@@ -109,10 +110,10 @@ def main():
     tap_settings = []
 #    for tap0 in [280, 300, 400]:
 #    for tap0 in [450, 475, 500, 550, 600 ]:
-    for tap0 in [1000]:#[1000,800,600,550,500,450,400,300 ]:
+    for tap0 in [1000,800,600,550,500,450,400,300 ]:
     #for tap0 in [700]:
-        for tap1 in [0]:#[-120,-80,-40,0,40,80,120]:
-            for tap2 in [0]:#[-120,-80,-40,0,40,80,120]:
+        for tap1 in [-120,-80,-40,0,40,80,120]:
+            for tap2 in [-120,-80,-40,0,40,80,120]:
         #for tap1 in range(-150, 150+1, 25):
         #    for tap2 in range(-150, 150+1, 25):
                 tap_settings.append((tap0, tap1, tap2))
@@ -164,7 +165,7 @@ def main():
                               ring = ring, positions=positions, 
                               tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
                               mylogfolder = logfolder_for_ber, 
-                              value=2, 
+                              value=15, 
                               db=db)
 
     if last_index is not None:
