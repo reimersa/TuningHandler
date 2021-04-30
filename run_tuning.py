@@ -197,7 +197,7 @@ def ask_for_name(db):
 def confirm_settings( modules, chips, ring, positions, n_settings, value):
     print('Please verify the following information is correct for the scans:')
     print(f'module settings: {modules},\nchip settings: {chips},\nring: {ring},\npositions: {positions}')
-    extra_seconds = 6
+    extra_seconds = 12
     run_time = timedelta(seconds = n_settings*(value+extra_seconds) ) #could try to add in extra time
     #readable_run_time = run_time.strftime('%H:%M:%S')
     print(f'Will run {n_settings} settings for {value} seconds each. A minimimum run time of {run_time}, assuming {extra_seconds}s overhead time per scan.')
