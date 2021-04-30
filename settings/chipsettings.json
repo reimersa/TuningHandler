@@ -2,19 +2,19 @@
   "mod10": {
     "0": {
       "CML_TAP0_BIAS": "1000",
-      "VOLTAGE_TRIM_ANA": "23",
-      "VOLTAGE_TRIM_DIG": "26",
+      "VOLTAGE_TRIM_ANA": "21",
+      "VOLTAGE_TRIM_DIG": "29",
       "Vthreshold_LIN": "372"
     },
     "1": {
       "CML_TAP0_BIAS": "1000",
-      "VOLTAGE_TRIM_ANA": "21",
-      "VOLTAGE_TRIM_DIG": "24",
+      "VOLTAGE_TRIM_ANA": "19",
+      "VOLTAGE_TRIM_DIG": "28",
       "Vthreshold_LIN": "358"
     },
     "2": {
       "CML_TAP0_BIAS": "1000",
-      "VOLTAGE_TRIM_ANA": "16",
+      "VOLTAGE_TRIM_ANA": "18",
       "VOLTAGE_TRIM_DIG": "25",
       "Vthreshold_LIN": "373"
     },
@@ -68,14 +68,14 @@
       "CML_TAP0_BIAS": "1000",
       "LDAC_LIN": "170",
       "VOLTAGE_TRIM_ANA": "20",
-      "VOLTAGE_TRIM_DIG": "28",
+      "VOLTAGE_TRIM_DIG": "29",
       "Vthreshold_LIN": "383"
     },
     "2": {
       "CML_TAP0_BIAS": "1000",
       "LDAC_LIN": "170",
       "VOLTAGE_TRIM_ANA": "20",
-      "VOLTAGE_TRIM_DIG": "27",
+      "VOLTAGE_TRIM_DIG": "28",
       "Vthreshold_LIN": "368"
     },
     "3": {
@@ -151,18 +151,18 @@
   "mod7": {
     "0": {
       "CML_TAP0_BIAS": "1000",
-      "VOLTAGE_TRIM_ANA": "23",
-      "VOLTAGE_TRIM_DIG": "25",
+      "VOLTAGE_TRIM_ANA": "21",
+      "VOLTAGE_TRIM_DIG": "26",
       "Vthreshold_LIN": "369"
     },
     "1": {
-      "VOLTAGE_TRIM_ANA": "16",
+      "VOLTAGE_TRIM_ANA": "15",
       "VOLTAGE_TRIM_DIG": "24",
       "Vthreshold_LIN": "357"
     },
     "2": {
-      "VOLTAGE_TRIM_ANA": "24",
-      "VOLTAGE_TRIM_DIG": "23",
+      "VOLTAGE_TRIM_ANA": "22",
+      "VOLTAGE_TRIM_DIG": "22",
       "Vthreshold_LIN": "400"
     },
     "3": {
@@ -174,20 +174,20 @@
   "mod9": {
     "0": {
       "CML_TAP0_BIAS": "1000",
-      "VOLTAGE_TRIM_ANA": "18",
+      "VOLTAGE_TRIM_ANA": "23",
       "VOLTAGE_TRIM_DIG": "28",
       "Vthreshold_LIN": "400"
     },
     "1": {
       "CML_TAP0_BIAS": "1000",
-      "VOLTAGE_TRIM_ANA": "18",
+      "VOLTAGE_TRIM_ANA": "16",
       "VOLTAGE_TRIM_DIG": "27",
       "Vthreshold_LIN": "349"
     },
     "2": {
       "CML_TAP0_BIAS": "1000",
       "VOLTAGE_TRIM_ANA": "20",
-      "VOLTAGE_TRIM_DIG": "29",
+      "VOLTAGE_TRIM_DIG": "30",
       "Vthreshold_LIN": "359"
     },
     "3": {
@@ -248,8 +248,8 @@
       "Vthreshold_LIN": "400"
     },
     "1": {
-      "VOLTAGE_TRIM_ANA": "16",
-      "VOLTAGE_TRIM_DIG": "16",
+      "VOLTAGE_TRIM_ANA": "17",
+      "VOLTAGE_TRIM_DIG": "22",
       "Vthreshold_LIN": "400"
     },
     "2": {
