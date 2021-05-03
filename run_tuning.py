@@ -432,9 +432,9 @@ def get_results_from_logfile( fname ):
             for l in lines:
                 l = escape_ansi(l)
                 if 'Final number of PRBS frames sent:' in l:
-                    nframes = int(l.split(' ')[-1])
+                    nframes = safe_convert( l.split(' ')[-1], int, 'NFrames')
                 elif 'Final BER counter:' in l:
-                    nber = int(l.split(' ')[-1])
+                    nber = safe_convert( l.split(' ')[-1], int, 'NBER')
 
     return (nframes, nber)
 
@@ -444,11 +444,11 @@ def get_settings_from_logfile( fname ):
 
     #index from the back so things can be added to the front
     settings = {
-        'TAP2' : int(fields[-1]),    
-        'TAP1' : int(fields[-2]),
-        'TAP0' : int(fields[-3]),
+        'TAP2' : safe_convert(fields[-1], int, 'TAP2'),    
+        'TAP1' : safe_convert(fields[-2], int, 'TAP1'),
+        'TAP0' : safe_convert(fields[-3], int, 'TAP0'),
         'Pos'  : fields[-4].strip('pos'),
-        'Chip' : int(fields[-5].strip('chip')),
+        'Chip' : safe_convert(fields[-5].strip('chip'), int, 'Chip' ),
         'Module' : fields[-6],
         'Ring'   : fields[-7]
         }
@@ -588,7 +588,19 @@ def read_temps_and_voltages( chip, xml_file, board=0, optical_group=0, hybrid=0 
      
 
 
+def safe_convert( str_value, to_type, value_name):
+    converted = None
+    try:
+       converted = to_type( str_value )
+    except Exception as e:
+        print(f'''ERROR: failed to convert the value of {value_name} from a string to {to_type.__name__}. 
+                The string value is {str_value}:\n
+                This may cause loss of data for this scan point. The original error was:\n{e}.''')
+       
+    return converted
+
 def read_monitoring_log(chip, log_file, board=0, optical_group=0, hybrid=0):
+    '''Read the chip temperatures and VDDD/VDDA output values from the log.'''
 
     #board, optical group, hybrid, chi[
     expected_chip_id = [ board, optical_group, hybrid, chip ]
@@ -613,7 +625,9 @@ def read_monitoring_log(chip, log_file, board=0, optical_group=0, hybrid=0):
                 if 'Monitor data for' in l: #Identifying the chip
                     m = re.search('(?P<board>\d*)/(?P<og>\d*)/(?P<hybrid>\d*)/(?P<chip>\d*)', l )
                     if m is not None:
-                        current_chip_id = [ int(m.group('board')), int(m.group('og')), int(m.group('hybrid')), int(m.group('chip')) ]
+                        ids = [  safe_convert( m.group(obj), int, obj) for obj in ['board','og','hybrid','chip'] ]
+                        if not None in ids:
+                            current_chip_id = ids
                     else:
                         #this shouldn't ever happen
                         print(f'WARNING: There may be an issue with the regex parsing of chip IDs')
@@ -622,7 +636,8 @@ def read_monitoring_log(chip, log_file, board=0, optical_group=0, hybrid=0):
                     m = re.search('(?P<sensid>TEMPSENS_\d):(?P<temp>[^+]*)', l)
                     if m is not None:
                         sens = m.group('sensid')
-                        temp = float( m.group('temp').strip() )
+                        temp = safe_convert( m.group('temp').strip(), float, 'temp') 
+                        if temp is None: continue
                         temps_and_voltages[sens] = temp
                     else:
                         #This shouldn't ever happen
@@ -632,7 +647,10 @@ def read_monitoring_log(chip, log_file, board=0, optical_group=0, hybrid=0):
                     m = re.search('(?P<Vtype>VOUT[^:\s]*ShuLDO):(?P<voltage>[^+]*)', l)
                     if m is not None:
                         vsource = m.group('Vtype')
-                        voltage = float( m.group('voltage').strip() )*2 #multiply by 2 because for some reason the printed values are half of the actual ones?
+                        voltage = safe_convert( m.group('voltage').strip(), float,  'voltage')
+                        if voltage is None: continue
+                        
+                        voltage *= 2 #multiply by 2 because for some reason the printed values are half of the actual ones?
                         temps_and_voltages[vsource] = voltage
                     else:
                         #there are some messages printed about the VOUT which don't actually containt the info, we want 
