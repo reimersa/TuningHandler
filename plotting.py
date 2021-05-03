@@ -170,8 +170,8 @@ if __name__=='__main__':
     parser.add_argument('--db', dest='database', type=str, default='db/ber.json',
             help='database file name to query. [default: %(default)s]')
     parser.add_argument('--scan', dest='scan_number', type=int, default=None, help='comma separated list of scan numbers to display.')
-    parser.add_argument('--xgrid', dest='xgrid', type=str, default=None, help='variable for x-axis of facet grid')
-    parser.add_argument('--ygrid', dest='ygrid', type=str, default=None, help='variable for y-axis of facet grid')
+    parser.add_argument('--xgrid', dest='xgrid', type=str, default='TAP0', help='variable for x-axis of facet grid')
+    parser.add_argument('--ygrid', dest='ygrid', type=str, default='Chip', help='variable for y-axis of facet grid')
     
     args = parser.parse_args()
     db_fname = args.database
@@ -180,9 +180,7 @@ if __name__=='__main__':
 
     db = tdb.TuningDataBase(db_fname)
 
-    scan_number = int(args.scan_number)
-    if scan_number is None:
-        scan_number =  db.get_last_scan_id()
+    scan_number = int(args.scan_number) if args.scan_number is not None else db.get_last_scan_id()
 
     plot_all_taps_from_scan(db, scan_number, group_on=['Module','Chip','TAP0'], grid=[args.xgrid, args.ygrid])#grid=['TAP0','Chip'])
     #plot_tap0_only_scan_from_index(db, 41)
