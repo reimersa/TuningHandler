@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -169,7 +171,7 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Print most recent entries in the database')
     parser.add_argument('--db', dest='database', type=str, default='db/ber.json',
             help='database file name to query. [default: %(default)s]')
-    parser.add_argument('--scan', dest='scan_number', type=int, default=None, help='comma separated list of scan numbers to display.')
+    parser.add_argument('--scan', dest='scan_number', type=int, default=None, help='scan number to plot. [default: most recent]')
     parser.add_argument('--xgrid', dest='xgrid', type=str, default='TAP0', help='variable for x-axis of facet grid')
     parser.add_argument('--ygrid', dest='ygrid', type=str, default='Chip', help='variable for y-axis of facet grid')
     
