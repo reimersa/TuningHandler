@@ -123,6 +123,10 @@ class TuningDataBase():
             f.truncate()
         return index
 
+    def get_last_scan_id(self):
+        df = self.get_info()
+        return df['scan_index'].max()
+
 def has_named_scan(db, name):
     df = db.get_info()
     if 'name' in df.columns:

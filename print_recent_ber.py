@@ -15,6 +15,7 @@ if __name__=='__main__':
     parser.add_argument('-H', dest='show_columns', action='store_true', default=False, help='List all columns in database' )
     parser.add_argument('-c', dest='columns', default=None,help='comma separated list of columns to show' )
     parser.add_argument('--list-named', dest='list_named', action='store_true',default=False, help="list the scans with names and show some overview info about them.")
+    parser.add_argument('--scans', dest='scan_numbers', default=None, help='comma separated list of scan numbers to display.')
     
     args = parser.parse_args()
     db_fname = args.database
@@ -36,6 +37,10 @@ if __name__=='__main__':
             print('')
         exit(0)
     
+    if args.scan_numbers is not None:
+        scan_ids = [ float(scan) for scan in args.scan_numbers.split(',') ]
+        df = df[ df[ 'scan_index' ].isin(scan_ids) ]
+        
     if args.columns is not None:
         columns = args.columns.split(',')
         df = df[ columns ]

@@ -5,8 +5,9 @@ from matplotlib.colors import LogNorm
 
 import tuning_db as tdb
 import os
+import argparse
 
-def plot_all_taps_from_scan(  db, scan_index, plotdir='plots/test/', 
+def plot_all_taps_from_scan(  db, scan_index, plotdir='plots/', 
                                 group_on = ['Module','Chip','TAP0'], cmap = sns.cm.rocket_r, grid=[]):
     '''Plot heatmaps of relevant quantities from a particular BER scan index.
     can choose how to orient between Module, Chip, TAP0, TAP1, TAP2, the three 
@@ -72,7 +73,7 @@ def plot_all_taps_from_scan(  db, scan_index, plotdir='plots/test/',
             fig = fg.fig
 
         param_value_string = '_'.join([ f'{param}.{value}' for param, value in zip(group_on, group_values) ])
-        pltname_base = os.path.join(plotdir, f'BER_{ring}_{pos}_{param_value_string}')
+        pltname_base = os.path.join(plotdir, f'BER_Scan{scan_index}_{ring}_{pos}_{param_value_string}')
         plt.savefig(f'{pltname_base}.png')
         plt.savefig(f'{pltname_base}.pdf')
 
@@ -159,9 +160,29 @@ def plot_tap0_only_scan_from_index( db, scan_index, plotdir='plots/test/', cmap 
 
     plot_all_taps_from_scan(db, scan_index, plotdir=plotdir, group_on = ['TAP1','TAP2','Module'], grid=['Module',None])
            
-if __name__ == '__main__':
 
-    import tuning_db as tdb
-    db = tdb.TuningDataBase('db/ber.json')
-    #plot_all_taps_from_scan(db, 39, group_on=['Module','Chip','TAP0'], grid=['TAP0','Chip'])
-    plot_tap0_only_scan_from_index(db, 41)
+
+
+
+if __name__=='__main__':
+
+    parser = argparse.ArgumentParser(description='Print most recent entries in the database')
+    parser.add_argument('--db', dest='database', type=str, default='db/ber.json',
+            help='database file name to query. [default: %(default)s]')
+    parser.add_argument('--scan', dest='scan_number', type=int, default=None, help='comma separated list of scan numbers to display.')
+    parser.add_argument('--xgrid', dest='xgrid', type=str, default=None, help='variable for x-axis of facet grid')
+    parser.add_argument('--ygrid', dest='ygrid', type=str, default=None, help='variable for y-axis of facet grid')
+    
+    args = parser.parse_args()
+    db_fname = args.database
+
+       
+
+    db = tdb.TuningDataBase(db_fname)
+
+    scan_number = int(args.scan_number)
+    if scan_number is None:
+        scan_number =  db.get_last_scan_id()
+
+    plot_all_taps_from_scan(db, scan_number, group_on=['Module','Chip','TAP0'], grid=[args.xgrid, args.ygrid])#grid=['TAP0','Chip'])
+    #plot_tap0_only_scan_from_index(db, 41)
