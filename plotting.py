@@ -58,7 +58,7 @@ def plot_all_taps_from_scan(  db, scan_index, plotdir='plots/',
         #Might be nice to handle that somehow
         min_limit = 1./file_group['NFrames'].max()
         param_value_string = ', '.join([ f'{param} = {value}' for param, value in zip(group_on, group_values) ])
-        title = f'{param_value_string}, Position {pos}| BER lower limit: {min_limit:.1e}' 
+        title = f'{param_value_string}, Position {pos}| BER lower limit: {min_limit:.2e}' 
 
         colour_norm = get_heatmap_ber_norms( file_group )
 
@@ -67,7 +67,7 @@ def plot_all_taps_from_scan(  db, scan_index, plotdir='plots/',
 
         if do_single_plot: 
             fig = plt.figure()
-            ax = make_ber_heatmap(  pivots, data=file_group, cmap=cmap) 
+            ax = make_ber_heatmap(  pivots, data=file_group,  norm=colour_norm, cmap=cmap) 
             ax.set_title(title)
 
         else: #do a heatmap grid
@@ -138,6 +138,7 @@ def make_ber_heatmap(  pivots, **kwargs ):
     try:
         #If there are multiple entries with the same settings, but different error rates then the pivot won't work
         pivot = df.pivot( pivots[0], pivots[1],'Error_Rate')
+        pivot_nber = df.pivot( pivots[0], pivots[1], 'NBER')
 
     except Exception as e:
 
@@ -153,7 +154,9 @@ def make_ber_heatmap(  pivots, **kwargs ):
         pivot = df.pivot( pivots[0], pivots[1], 'Error_Rate')
 
     mask  = pivot.isna()
-    ax = sns.heatmap(pivot, annot=True, annot_kws={'fontsize':'xx-small'}, fmt='.0e',  linewidth=0.5, mask= mask, **kwargs )
+    mask_nonzero = (pivot_nber > 0.)
+    ax = sns.heatmap(pivot, annot=True, annot_kws={'fontsize':'xx-small'}, fmt='.2e',  linewidth=0.5, mask= mask, **kwargs )
+    ax = sns.heatmap(pivot, annot=True, annot_kws={'fontsize':'xx-small', 'color':'green'}, fmt='.2e',  linewidth=0.5, cbar=False, mask= mask_nonzero, **kwargs )
     
     return ax
 
@@ -184,5 +187,6 @@ if __name__=='__main__':
 
     scan_number = int(args.scan_number) if args.scan_number is not None else db.get_last_scan_id()
 
-    plot_all_taps_from_scan(db, scan_number, group_on=['Module','Chip','TAP0'], grid=[args.xgrid, args.ygrid])#grid=['TAP0','Chip'])
+    #plot_all_taps_from_scan(db, scan_number, group_on=['Module','Chip','TAP0'], grid=[args.xgrid, args.ygrid])#grid=['TAP0','Chip'])
+    plot_all_taps_from_scan(db, scan_number, group_on=['Module','TAP1','TAP2'])
     #plot_tap0_only_scan_from_index(db, 41)

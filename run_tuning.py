@@ -41,10 +41,10 @@ modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12',
 
 
 ids_and_chips_per_module_R1 = {
-    'mod10': (0, [1,2]), 
-    'mod12': (4, [0, 1, 2]),
-    'mod7': (2,  [0, 1, 2]),
-    'mod9': (3, [0,1, 2]),
+    #'mod10': (3, [0,1,2]), 
+    #'mod12': (4, [0, 1, 2]),
+    #'mod7': (2,  [0, 1, 2]),
+    'mod9': (0, [1, 2]),
     'modT03' : (1, [0, 1, 2] )
     #'mod11': (1, [0, 1, 2]), #new
 }
@@ -89,7 +89,7 @@ def main():
     ring_for_tuning = 'R1'
     prefix_plotfolder = 'default'
     
-    reset_all_settings()
+    #reset_all_settings()
     #run_reset(ring=ring_for_tuning, module=mod_for_tuning)
     #run_programming(ring=ring_for_tuning, module=mod_for_tuning)
     #run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='physics')
@@ -119,11 +119,11 @@ def main():
                 tap_settings.append((tap0, tap1, tap2))
                 
                 
-    #tap_settings = [(450, 0, 0)]
+    tap_settings = [(800, 0, 0)]
     print(len(tap_settings))
     ring            = 'R1' #'singleQuad'
-    positions       = ['R11','R12','R13','R14','R15'] #['0']
-    logfolder_for_ber = logfolder + 'disk_R1_test/' #'singleAdapterBoard/' #'diskR1_5modules_allRingsPowered_mod7/'
+    positions       = ['R14','R15'] #['R11','R12','R13','R14','R15'] #['0']
+    logfolder_for_ber = logfolder + 'diskR1_5modules_R14_R15_HV35_long/' #'singleAdapterBoard/' #'diskR1_5modules_allRingsPowered_mod7/'
     module_info_for_ber =  ids_and_chips_per_module_R1 #ids_and_chips_per_module_SAB 
     modules_for_ber = module_info_for_ber.keys()
     chips_per_module= {}
@@ -165,7 +165,7 @@ def main():
                               ring = ring, positions=positions, 
                               tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
                               mylogfolder = logfolder_for_ber, 
-                              value=15, 
+                              value=10800, 
                               db=db)
 
     if last_index is not None:
