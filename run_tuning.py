@@ -22,6 +22,7 @@ import tuning_db as tdb
 import pandas as pd
 
 import plotting as pl
+import argparse
 #from settings.chipsettings import *
 
 
@@ -74,55 +75,41 @@ ids_and_chips_per_module_SAB = {
 
 
 
-
-
-
-
-
-
-
-
-
-def main():
+def main(reset_settings=False, reset_backend=False, run_programming=False, run_calibration=False, do_threshold_tuning=False):
     
     mod_for_tuning = 'mod7'
     ring_for_tuning = 'R1'
     prefix_plotfolder = 'default'
     
-    #reset_all_settings()
-    #run_reset(ring=ring_for_tuning, module=mod_for_tuning)
-    #run_programming(ring=ring_for_tuning, module=mod_for_tuning)
-    #run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='physics')
-    #run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='pixelalive')
+    if reset_settings:
+        reset_all_settings()
+    if reset_backend:
+        run_reset(ring=ring_for_tuning, module=mod_for_tuning)
+    if run_programming:
+        run_programming(ring=ring_for_tuning, module=mod_for_tuning)
+    if run_calibration:
+        run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='physics')
+        run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='pixelalive')
     
     if ring_for_tuning == 'singleQuad': plotfolderpostfix = ''
     elif ring_for_tuning == 'R1': plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R1.keys()])
     elif ring_for_tuning == 'R3': plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R3.keys()])
     else: raise ValueError('Invalid \'ring_for_tuning\' specified: %s' % (ring_for_tuning))
     
-    do_threshold_tuning = False
     if do_threshold_tuning:
         run_threshold_tuning(module=mod_for_tuning, ring=ring_for_tuning, plotfoldername=prefix_plotfolder+plotfolderpostfix)
     
-    
-    
     # now run many BER tests
     tap_settings = []
-#    for tap0 in [280, 300, 400]:
-#    for tap0 in [450, 475, 500, 550, 600 ]:
-    for tap0 in [1000,800,600,550,500,450,400,300 ]:
-    #for tap0 in [700]:
-        for tap1 in [-120,-80,-40,0,40,80,120]:
-            for tap2 in [-120,-80,-40,0,40,80,120]:
-        #for tap1 in range(-150, 150+1, 25):
-        #    for tap2 in range(-150, 150+1, 25):
+    for tap0 in [1000,900,800,700,600,500,400,300,200]:#[1000,800,600,550,500,450,400,300 ]:
+        for tap1 in [0]:#[-120,-80,-40,0,40,80,120]:
+            for tap2 in[0]:#[-120,-80,-40,0,40,80,120]:
                 tap_settings.append((tap0, tap1, tap2))
                 
                 
-    tap_settings = [(800, 0, 0)]
-    print(len(tap_settings))
+    #tap_settings = [(1000, 0, 0)]
     ring            = 'R1' #'singleQuad'
-    positions       = ['R14','R15'] #['R11','R12','R13','R14','R15'] #['0']
+    positions       = ['R14','R15','R11','R12','R13'] #['R11','R12','R13','R14','R15'] #['0']
     logfolder_for_ber = logfolder + 'diskR1_5modules_R14_R15_HV35_long/' #'singleAdapterBoard/' #'diskR1_5modules_allRingsPowered_mod7/'
     module_info_for_ber =  ids_and_chips_per_module_R1 #ids_and_chips_per_module_SAB 
     modules_for_ber = module_info_for_ber.keys()
@@ -140,36 +127,22 @@ def main():
                 t0 = s[0]
                 t1 = s[1]
                 t2 = s[2]
-                #if module == 'mod7' and chip == 1:
-                #    t0 = min(t0+130, 1023)
-                #if module == 'mod7' and chip == 2:
-                #    t0 = min(t0-60, 1023)
 
                 settings_per_chip[chip].append((t0, t1, t2))
 
                 tap_settings_per_module_and_chip[module] = settings_per_chip
-
-#            import pdb; pdb.set_trace()
-            #print module, chip, tap_settings_per_module_and_chip[module][chip]
-            #plot_ber_results(module=module, chip=chip, ring=ring, position=positions[moduleidx], tap_settings=tap_settings_per_module_and_chip[module][chip])
-            
-#    print tap_settings_per_module_and_chip
-            
     
     do_db = True
     db = None if not do_db else tdb.TuningDataBase(dbfile)
 
-    #last_index = 39
     last_index = run_ber_scan(modules =module_info_for_ber, 
                               chips_per_module = chips_per_module, 
                               ring = ring, positions=positions, 
                               tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
                               mylogfolder = logfolder_for_ber, 
-                              value=10800, 
+                              value=5000, 
                               db=db)
-
-    if last_index is not None:
-        pl.plot_all_taps_from_scan(db, last_index)
+    print(f'Finished Scan {last_index}')
 
 def ask_for_name(db):
     print('Would you like to give this scan a name? [y/n]')
@@ -196,7 +169,7 @@ def ask_for_name(db):
 
 def confirm_settings( modules, chips, ring, positions, n_settings, value):
     print('Please verify the following information is correct for the scans:')
-    print(f'module settings: {modules},\nchip settings: {chips},\nring: {ring},\npositions: {positions}')
+    print(f'module settings: {modules},\nchip settings: {chips},\nring: {ring},\nThe List of positions with powered modules is: {positions}')
     extra_seconds = 12
     run_time = timedelta(seconds = n_settings*(value+extra_seconds) ) #could try to add in extra time
     #readable_run_time = run_time.strftime('%H:%M:%S')
@@ -461,106 +434,6 @@ def get_all_info_from_logfile( fname ):
     all_info.update( { 'NFrames' : nframes, 'NBER' : nber} )
 
     return all_info
-    
-
-
-
-def plot_ber_results(module, chip, ring, position, tap_settings, mylogfolder, groupby = 'TAP0'):
-
-    # group by tap0
-    tapdict = {}
-    xvalues = []
-    yvalues = []
-    for tap0, tap1, tap2 in sorted(tap_settings):
-        logfilename = os.path.join(mylogfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(position), tap0, tap1, tap2))
-        nframes, nber = get_results_from_logfile( logfilename )
-
-        if groupby == 'TAP0':
-            if not tap0 in tapdict.keys():
-                tapdict[tap0] = {(tap1, tap2): (nframes, nber)}
-            else:
-                tapdict[tap0][(tap1, tap2)] = ((nframes, nber))
-            if not tap1 in xvalues: xvalues.append(tap1)
-            if not tap2 in yvalues: yvalues.append(tap2)
-        elif groupby == 'TAP1':
-            if not tap0 in tapdict.keys():
-                tapdict[tap1] = {(tap0, tap2): (nframes, nber)}
-            else:
-                tapdict[tap1][(tap0, tap2)] = ((nframes, nber))
-            if not tap0 in xvalues: xvalues.append(tap0)
-            if not tap2 in yvalues: yvalues.append(tap2)
-        elif groupby == 'TAP2':
-            if not tap2 in tapdict.keys():
-                tapdict[tap2] = {(tap0, tap1): (nframes, nber)}
-            else:
-                tapdict[tap2][(tap0, tap1)] = ((nframes, nber))
-            if not tap0 in xvalues: xvalues.append(tap0)
-            if not tap1 in yvalues: yvalues.append(tap1)
-
-    #make numpy arrays
-    ber_and_minval_arrays = {}
-    minvalue_arrays = {}
-    for key in tapdict.keys():
-        ordered_list = []
-        minvalues = []
-        for(key1, key2) in sorted(tapdict[key].keys()):
-            nframes = tapdict[key][(key1, key2)][0]
-            ber_abs = tapdict[key][(key1, key2)][1]
-            print( key1, key2, ber_abs)
-
-            if nframes <= 0 or ber_abs < 0:
-                ber_rel = -1
-                minvalue = -1
-            else:
-                minvalue = np.float64(1)/np.float64(nframes)
-                ber_rel = np.float64(max(minvalue, (np.float64(ber_abs) / np.float64(nframes))))
-                print('components: ', np.float64(ber_abs), np.float64(nframes), minvalue, np.float64(1), minvalue, ber_rel)
-                
-            ordered_list.append((ber_rel, minvalue))
-        ber_and_minval_arrays[key] = (np.array([tup[0] for tup in ordered_list], dtype=np.float64).reshape(len(xvalues), len(yvalues)), np.array([tup[1] for tup in ordered_list], dtype=np.float64).reshape(len(xvalues), len(yvalues)))
-        print( ber_and_minval_arrays[key])
-
-        fig, ax = plt.subplots(figsize=(12,4))
-        z_max = 1E-5
-        cmap = plt.cm.get_cmap('Purples', 300)
-        im = ax.imshow(np.swapaxes(ber_and_minval_arrays[key][0], 0, 1), aspect='auto', origin='lower', vmin=np.min(ber_and_minval_arrays[key][1])+1E-30, vmax=z_max, cmap=cmap, norm=matplotlib.colors.LogNorm())
-
-
-
-        cbar = plt.colorbar(im)
-        cbar.ax.set_ylabel('Bit error rate')
-        xlabel = 'TAP1' if groupby == 'TAP0' else 'TAP0'
-        ylabel = 'TAP1' if groupby == 'TAP2' else 'TAP2'
-        title = '%s = %i, BER lower limit: %s' % (groupby, key, '{:.1e}'.format(minvalue))
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        ax.set_xticks(np.arange(len(xvalues)))
-        ax.set_yticks(np.arange(len(yvalues)))
-        ax.set_xticklabels(xvalues)
-        ax.set_yticklabels(yvalues)
-        plt.tight_layout()
-
-        for i in range(len(xvalues)):
-            for j in range(len(yvalues)):
-                val = ber_and_minval_arrays[key][0][i,j]
-                minvalue = ber_and_minval_arrays[key][1][i,j]
-                print( val, minvalue)
-                if val == minvalue:
-                    color = 'green'
-                elif math.log10(val) > 0.5 * (math.log10(minvalue) - math.log10(z_max)) + math.log10(z_max):
-                    color = 'white'
-                else:
-                    color = 'black'
-                ax.text(i, j, '{:.1e}'.format(val) if val else '0', ha='center', va='center', color=color)
-
-
-
-        outfilename = os.path.join(plotfolder, 'ber_%s_%s_chip%i_pos%s_%s_%i.pdf' % (ring, module, chip, str(position), groupby, key))
-        fig.savefig(outfilename)
-        fig.savefig(outfilename.replace('.pdf', '.png'))
-        plt.close(fig)
-
 
 
 def read_temps_and_voltages( chip, xml_file, board=0, optical_group=0, hybrid=0 ):
@@ -810,9 +683,6 @@ def reset_xml_files():
     reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R3, 'R3')
     print('--> Reset XML files')
 
-
-
-
 def reset_singleQuad_xml_files(type, modules=modulelist, chips=chiplist):
     xmlobject = XMLInfo(xmlfile_blueprint)
     xmlobject.set_module_attribute_by_moduleid(0, 'Id', 1)
@@ -823,9 +693,6 @@ def reset_singleQuad_xml_files(type, modules=modulelist, chips=chiplist):
     for module in modules:
         targetname = os.path.join(xmlfolder,'CMSIT_singleQuad_%s_%s.xml' % (module, type))
         xmlobject.save_xml_as(targetname)
-
-
-
 
 def reset_and_prepare_Ring_xml_file(type_name, type_setting, ids_and_chips_per_module, ring):
 
@@ -868,8 +735,6 @@ def reset_and_prepare_Ring_xml_file(type_name, type_setting, ids_and_chips_per_m
 
     targetname = os.path.join(xmlfolder,'CMSIT_disk%s_%s.xml' % (str(ring), type_name))
     xmlobject.save_xml_as(targetname)
-
-
 
 #PREPARE
 def prepare_singleQuad_xml_files(type_name, type_setting, modules=modulelist):
@@ -914,4 +779,13 @@ def escape_ansi(line):
 
 
 if __name__ == '__main__':
-    main()
+
+    parser = argparse.ArgumentParser(description='Run Tuning and BER Scan procedures')
+    parser.add_argument('--rst-settings', dest='reset_settings', action='store_true', default=False, help='resest all text and xml files. [default: %(default)s]')
+    parser.add_argument('--rst-backend',  dest='reset_backend',  action='store_true', default=False, help='reset backend board. [default: %(default)s]')
+    parser.add_argument('--program',      dest='program',        action='store_true', default=False, help='run programming (CMSIT -p). [default: %(default)s]')
+    parser.add_argument('--calibration',  dest='calibration',    action='store_true', default=False, help='run calibrations (physics and pixelalive). [default: %(default)s]')
+    parser.add_argument('--thresholds',   dest='tune_thresholds', action='store_true', default=False, help='run threshold tuning. [default: %(default)s]')
+    args = parser.parse_args()
+
+    main(args.reset_settings, args.reset_backend, args.program, args.calibration, args.tune_thresholds)
