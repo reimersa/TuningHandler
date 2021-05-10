@@ -10,7 +10,7 @@ import os
 import argparse
 
 def plot_all_taps_from_scan(  db, scan_index, plotdir='plots/', 
-                                group_on = ['Module','Chip','TAP0'], cmap = sns.cm.rocket_r, grid=[]):
+                                group_on = ['Module','Chip','TAP0'], cmap = sns.cm.rocket_r, grid=[None, None]):
     '''Plot heatmaps of relevant quantities from a particular BER scan index.
     can choose how to orient between Module, Chip, TAP0, TAP1, TAP2, the three 
     quantities which are "grouped_on" will get be grouped into separate files,
@@ -42,6 +42,8 @@ def plot_all_taps_from_scan(  db, scan_index, plotdir='plots/',
     for axis in axes:
         if not axis is None:
             group_on.remove(axis)
+        else:
+            grid.remove(None)
         
 
     for group_values, file_group in df.groupby(group_on):
@@ -58,7 +60,7 @@ def plot_all_taps_from_scan(  db, scan_index, plotdir='plots/',
         #Might be nice to handle that somehow
         min_limit = 1./file_group['NFrames'].max()
         param_value_string = ', '.join([ f'{param} = {value}' for param, value in zip(group_on, group_values) ])
-        title = f'{param_value_string}, Position {pos}| BER lower limit: {min_limit:.1e}' 
+        title = f'{param_value_string}, Position {pos} \n BER lower limit: {min_limit:.2e}' 
 
         colour_norm = get_heatmap_ber_norms( file_group )
 
@@ -67,15 +69,16 @@ def plot_all_taps_from_scan(  db, scan_index, plotdir='plots/',
 
         if do_single_plot: 
             fig = plt.figure()
-            ax = make_ber_heatmap(  pivots, data=file_group, cmap=cmap) 
+            ax = make_ber_heatmap(  pivots, data=file_group,  norm=colour_norm, cmap=cmap) 
             ax.set_title(title)
+            fig.tight_layout()
 
         else: #do a heatmap grid
             fg = do_facetgrid_heatmaps( file_group, pivots, title, col=axes[0], row=axes[1],  norm=colour_norm, cmap=cmap )
             fig = fg.fig
 
         param_value_string = '_'.join([ f'{param}.{value}' for param, value in zip(group_on, group_values) ])
-        pltname_base = os.path.join(plotdir, f'BER_Scan{scan_index}_{ring}_{pos}_{param_value_string}')
+        pltname_base = os.path.join(plotdir, f'BER_Scan{int(scan_index)}_{ring}_{pos}_{param_value_string}')
         plt.savefig(f'{pltname_base}.png')
         plt.savefig(f'{pltname_base}.pdf')
 
@@ -122,6 +125,8 @@ def get_heatmap_ber_norms( df ):
     ber_vals = df['Error_Rate'].fillna(2) # need positive values for log scale, real values should be < 1
     min_val = ber_vals.min()
     max_val = 10e6/df['NFrames'].max() #Ph2_ACF reports a maximum of 10M errors, so this should be the highest reports value)
+    max_val = max( max_val, min_val) #should only happen if 'NFrames' was -1 for all scans, i.e. scan didn't work
+                                     # but do this to avoid a crash.
     colbar_norm = LogNorm(vmin=min_val, vmax=max_val)
 
     return colbar_norm
@@ -138,6 +143,7 @@ def make_ber_heatmap(  pivots, **kwargs ):
     try:
         #If there are multiple entries with the same settings, but different error rates then the pivot won't work
         pivot = df.pivot( pivots[0], pivots[1],'Error_Rate')
+        pivot_nber = df.pivot( pivots[0], pivots[1], 'NBER')
 
     except Exception as e:
 
@@ -152,8 +158,10 @@ def make_ber_heatmap(  pivots, **kwargs ):
         print(f'The new Data is: \n{df.to_string()}')
         pivot = df.pivot( pivots[0], pivots[1], 'Error_Rate')
 
-    mask  = pivot.isna()
-    ax = sns.heatmap(pivot, annot=True, annot_kws={'fontsize':'xx-small'}, fmt='.0e',  linewidth=0.5, mask= mask, **kwargs )
+    mask  = pivot.isna() 
+    mask_nonzero = (pivot_nber > 0.)
+    ax = sns.heatmap(pivot, annot=True, annot_kws={'fontsize':'xx-small'}, fmt='.2e',  linewidth=0.5, mask= mask, **kwargs )
+    ax = sns.heatmap(pivot, annot=True, annot_kws={'fontsize':'xx-small', 'color':'green'}, fmt='.2e',  linewidth=0.5, cbar=False, mask= mask_nonzero, **kwargs )
     
     return ax
 
@@ -192,12 +200,15 @@ def plot_voltages_from_scan( db, scan_index, xval='TAP0', plotdir='plots/voltage
 
 if __name__=='__main__':
 
+    ber_variables = ['TAP0','TAP1','TAP2','Module','Chip']
     parser = argparse.ArgumentParser(description='Print most recent entries in the database')
     parser.add_argument('--db', dest='database', type=str, default='db/ber.json',
             help='database file name to query. [default: %(default)s]')
     parser.add_argument('--scan', dest='scan_number', type=int, default=None, help='scan number to plot. [default: most recent]')
-    parser.add_argument('--xgrid', dest='xgrid', type=str, default='TAP0', help='variable for x-axis of facet grid')
-    parser.add_argument('--ygrid', dest='ygrid', type=str, default='Chip', help='variable for y-axis of facet grid')
+    parser.add_argument('--group-on', dest='group_on', nargs=3, choices=ber_variables, default=['Module','Chip','TAP0'],
+                        help="Values to separate the plots by, each heatmap will represent scans with one value of each of these three settings [default: %(default)s")
+    parser.add_argument('--xgrid', dest='xgrid', choices=ber_variables + ['None'], default='TAP0', help='variable for x-axis of facet grid [default %(default)s ]')
+    parser.add_argument('--ygrid', dest='ygrid', choices=ber_variables + ['None'], default='Chip', help='variable for y-axis of facet grid [default %(default)s ]')
     parser.add_argument('--voltages', action='store_true', default=False, help='Plot the VDDD and VDDA values from the scan as a function of TAP0')
     
     args = parser.parse_args()
@@ -207,7 +218,12 @@ if __name__=='__main__':
 
     scan_number = int(args.scan_number) if args.scan_number is not None else db.get_last_scan_id()
 
+
     if args.voltages:
         plot_voltages_from_scan(db, scan_number)
     else:    
-        plot_all_taps_from_scan(db, scan_number, group_on=['Module','Chip','TAP0'], grid=[args.xgrid, args.ygrid])#grid=['TAP0','Chip'])
+        if args.xgrid == 'None':
+            args.xgrid = None
+        if args.ygrid == 'None':
+            args.ygrid = None
+        plot_all_taps_from_scan(db, scan_number, group_on=args.group_on, grid=[args.xgrid, args.ygrid])
