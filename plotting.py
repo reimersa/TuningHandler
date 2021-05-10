@@ -9,7 +9,7 @@ import tuning_db as tdb
 import os
 import argparse
 
-def plot_all_taps_from_scan(  db, scan_index, plotdir='plots/', 
+def plot_all_ber_from_scan(  db, scan_index, plotdir='plots/', 
                                 group_on = ['Module','Chip','TAP0'], cmap = sns.cm.rocket_r, grid=[None, None]):
     '''Plot heatmaps of relevant quantities from a particular BER scan index.
     can choose how to orient between Module, Chip, TAP0, TAP1, TAP2, the three 
@@ -166,13 +166,8 @@ def make_ber_heatmap(  pivots, **kwargs ):
     return ax
 
 
-def plot_tap0_only_scan_from_index( db, scan_index, plotdir='plots/test/', cmap = sns.cm.rocket_r ):
-
-    plot_all_taps_from_scan(db, scan_index, plotdir=plotdir, group_on = ['TAP1','TAP2','Module'], grid=['Module',None])
-           
-
 def plot_voltages_from_scan( db, scan_index, xval='TAP0', plotdir='plots/voltages'):
-    '''Make A grid of Scatter plots of VDDD and VDDA values from a scan'''
+    '''Make a grid of Scatter plots of VDDD and VDDA values from a scan'''
 
     if not os.path.exists(plotdir):    
         os.makedirs(plotdir)
@@ -226,4 +221,4 @@ if __name__=='__main__':
             args.xgrid = None
         if args.ygrid == 'None':
             args.ygrid = None
-        plot_all_taps_from_scan(db, scan_number, group_on=args.group_on, grid=[args.xgrid, args.ygrid])
+        plot_all_ber_from_scan(db, scan_number, group_on=args.group_on, grid=[args.xgrid, args.ygrid])
