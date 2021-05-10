@@ -163,8 +163,32 @@ def plot_tap0_only_scan_from_index( db, scan_index, plotdir='plots/test/', cmap 
     plot_all_taps_from_scan(db, scan_index, plotdir=plotdir, group_on = ['TAP1','TAP2','Module'], grid=['Module',None])
            
 
+def plot_voltages_from_scan( db, scan_index, xval='TAP0', plotdir='plots/voltages'):
+    '''Make A grid of Scatter plots of VDDD and VDDA values from a scan'''
 
+    if not os.path.exists(plotdir):    
+        os.makedirs(plotdir)
 
+    df = db.get_info()
+    df = df[ df['scan_index'] == scan_index ]
+    df_voltsD = df.copy()
+    df_voltsD['VoltageType'] = 'Digital'
+    df_voltsD['Voltage'] = df_voltsD['VOUT_dig_ShuLDO']
+
+    df_voltsA = df
+    df_voltsA['VoltageType'] = 'Analog'
+    df_voltsA['Voltage']  = df_voltsA['VOUT_ana_ShuLDO']
+
+    df = pd.concat([df_voltsA, df_voltsD])
+    fg = sns.relplot(data=df,x=xval,y='Voltage',hue='Chip',col='Module',style='VoltageType', palette='Set2',alpha=0.9)
+    plot_name_base = f'BER_scan{int(scan_index)}_voltages'
+    full_plot_base = os.path.join(plotdir, plot_name_base)
+    plt.savefig( f'{full_plot_base}.pdf'  )
+    plt.savefig( f'{full_plot_base}.png'  )
+
+    fg.set(ylim=(1.0,1.4))
+    plt.savefig( f'{full_plot_base}_zoomed.pdf'  )
+    plt.savefig( f'{full_plot_base}_zoomed.png'  )
 
 if __name__=='__main__':
 
@@ -174,15 +198,16 @@ if __name__=='__main__':
     parser.add_argument('--scan', dest='scan_number', type=int, default=None, help='scan number to plot. [default: most recent]')
     parser.add_argument('--xgrid', dest='xgrid', type=str, default='TAP0', help='variable for x-axis of facet grid')
     parser.add_argument('--ygrid', dest='ygrid', type=str, default='Chip', help='variable for y-axis of facet grid')
+    parser.add_argument('--voltages', action='store_true', default=False, help='Plot the VDDD and VDDA values from the scan as a function of TAP0')
     
     args = parser.parse_args()
     db_fname = args.database
-
-       
 
     db = tdb.TuningDataBase(db_fname)
 
     scan_number = int(args.scan_number) if args.scan_number is not None else db.get_last_scan_id()
 
-    plot_all_taps_from_scan(db, scan_number, group_on=['Module','Chip','TAP0'], grid=[args.xgrid, args.ygrid])#grid=['TAP0','Chip'])
-    #plot_tap0_only_scan_from_index(db, 41)
+    if args.voltages:
+        plot_voltages_from_scan(db, scan_number)
+    else:    
+        plot_all_taps_from_scan(db, scan_number, group_on=['Module','Chip','TAP0'], grid=[args.xgrid, args.ygrid])#grid=['TAP0','Chip'])
