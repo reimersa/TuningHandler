@@ -135,11 +135,14 @@ def has_named_scan(db, name):
             return True
     return False
 
-def calculate_bit_error_rates( df ):
+def calculate_bit_error_rates( df, allow_zero=False ):
     '''Calculate a new row of the dataframe giving the Bit Error Rate (or its upper limit)
     From the total number of frames and errors'''
 
-    ber =  df['NBER'].clip(1)/df['NFrames']
+    if allow_zero:
+        ber = df['NBER']/df['NFrames']
+    else:
+        ber =  df['NBER'].clip(1)/df['NFrames']
     masked_ber =  ber.mask( ber < 0 )
     return masked_ber
 
