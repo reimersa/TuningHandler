@@ -44,10 +44,10 @@ modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12',
 ids_and_chips_per_module_R1 = {
     #'mod10': (3, [0,1,2]), 
     #'mod12': (4, [0, 1, 2]),
-    #'mod7': (2,  [0, 1, 2]),
-    'mod9': (0, [1, 2]),
-    'modT03' : (1, [0, 1, 2] )
-    #'mod11': (1, [0, 1, 2]), #new
+    'mod7': (0,  [ 1, 2]),
+    #'mod10': (0, [1, 2]),
+    #'mod12' : (1, [0, 1, 2] )
+    'mod11': (1, [0, 1, 2]), #new
 }
 
 #ids_and_chips_per_module_R1 = {
@@ -75,7 +75,7 @@ ids_and_chips_per_module_SAB = {
 
 
 
-def main(reset_settings=False, reset_backend=False, run_programming=False, run_calibration=False, do_threshold_tuning=False):
+def main( run_time=3, reset_settings=False, reset_backend=False, run_programming=False, run_calibration=False, do_threshold_tuning=False, test_only=False ):
     
     mod_for_tuning = 'mod7'
     ring_for_tuning = 'R1'
@@ -101,7 +101,8 @@ def main(reset_settings=False, reset_backend=False, run_programming=False, run_c
     
     # now run many BER tests
     tap_settings = []
-    for tap0 in [1000,900,800,700,600,500,400,300,200]:#[1000,800,600,550,500,450,400,300 ]:
+#    for tap0 in [1000,900,800,700,600,500,400,300,200]:#[1000,800,600,550,500,450,400,300 ]:
+    for tap0 in [1000,900,800,700,600,500,400,300]:
         for tap1 in [0]:#[-120,-80,-40,0,40,80,120]:
             for tap2 in[0]:#[-120,-80,-40,0,40,80,120]:
                 tap_settings.append((tap0, tap1, tap2))
@@ -132,15 +133,14 @@ def main(reset_settings=False, reset_backend=False, run_programming=False, run_c
 
                 tap_settings_per_module_and_chip[module] = settings_per_chip
     
-    do_db = True
-    db = None if not do_db else tdb.TuningDataBase(dbfile)
+    db = None if test_only else tdb.TuningDataBase(dbfile)
 
     last_index = run_ber_scan(modules =module_info_for_ber, 
                               chips_per_module = chips_per_module, 
                               ring = ring, positions=positions, 
                               tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
                               mylogfolder = logfolder_for_ber, 
-                              value=5000, 
+                              value=run_time, 
                               db=db)
     print(f'Finished Scan {last_index}')
 
@@ -167,17 +167,21 @@ def ask_for_name(db):
 
 
 
-def confirm_settings( modules, chips, ring, positions, n_settings, value):
+def confirm_settings( modules, chips, ring, positions, n_settings, value, db):
     print('Please verify the following information is correct for the scans:')
     print(f'module settings: {modules},\nchip settings: {chips},\nring: {ring},\nThe List of positions with powered modules is: {positions}')
-    extra_seconds = 12
+    extra_seconds = 12 if db is not None else 3 #we only do temp pre-scan when recording to db
     run_time = timedelta(seconds = n_settings*(value+extra_seconds) ) #could try to add in extra time
     #readable_run_time = run_time.strftime('%H:%M:%S')
     print(f'Will run {n_settings} settings for {value} seconds each. A minimimum run time of {run_time}, assuming {extra_seconds}s overhead time per scan.')
     end_time = (datetime.now() + run_time).strftime('%d/%m %H:%M')
     print(f'The run will finish AFTER {end_time}')
+    if db is None:
+        print(''''********** NO DATABASE **********\nNo database was specified, results will not be logged to any database.''')
+    else:
+        print(f'Logging results to database {db.db_filename()}')
     time.sleep(2)
-    print('enter "y/n"')
+    print('Continue with this run? enter "y/n"')
     answer = input()
     if answer == 'y':
         print('information confirmed, running tuning')
@@ -546,12 +550,12 @@ def get_num_settings( tap_settings ):
 def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_module_and_chip, mylogfolder, mode='time', value=10, db=None):
 
     n_settings = get_num_settings(tap_settings_per_module_and_chip) 
-    settings_are_correct = confirm_settings( modules, chips_per_module, ring, positions, n_settings, value)
+    settings_are_correct = confirm_settings( modules, chips_per_module, ring, positions, n_settings, value, db)
     if not settings_are_correct:
         print('Settings were not confirmed as correct, not running BER scan')
         return
 
-    scan_index = db.get_next_index()
+    scan_index = db.get_next_index() if db is not None else -1
     print(f'Scan Index will be {scan_index}.')
 
     name = None
@@ -619,10 +623,12 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
                 #command_ber = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, , value, os.path.join(mylogfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
 
                 
-                print(f'checking temperatures before running the scan')
-                hybrid_no = int(module_info[module][0])
-                temps_and_voltages = read_temps_and_voltages(chip, xmlfile_for_ber, hybrid=hybrid_no) 
-                print(f'the temperatures and voltages are {temps_and_voltages}')
+                if db is not None:
+                    print(f'checking temperatures before running the scan')
+                    hybrid_no = int(module_info[module][0])
+                    temps_and_voltages = read_temps_and_voltages(chip, xmlfile_for_ber, hybrid=hybrid_no) 
+                    print(f'the temperatures and voltages are {temps_and_voltages}')
+
                 # execute the OS command
                 #print(command_p)
                 #os.system(command_p)
@@ -781,6 +787,8 @@ def escape_ansi(line):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Run Tuning and BER Scan procedures')
+    parser.add_argument('-t','--run-time', default=3, type=int, help='run time per setting in seconds. [default %(default)s]')
+    parser.add_argument('--test', action='store_true', default=False, help='run in test mode - do not log any results in the database. [default: %(default)s]')
     parser.add_argument('--rst-settings', dest='reset_settings', action='store_true', default=False, help='resest all text and xml files. [default: %(default)s]')
     parser.add_argument('--rst-backend',  dest='reset_backend',  action='store_true', default=False, help='reset backend board. [default: %(default)s]')
     parser.add_argument('--program',      dest='program',        action='store_true', default=False, help='run programming (CMSIT -p). [default: %(default)s]')
@@ -788,4 +796,4 @@ if __name__ == '__main__':
     parser.add_argument('--thresholds',   dest='tune_thresholds', action='store_true', default=False, help='run threshold tuning. [default: %(default)s]')
     args = parser.parse_args()
 
-    main(args.reset_settings, args.reset_backend, args.program, args.calibration, args.tune_thresholds)
+    main(args.run_time, args.reset_settings, args.reset_backend, args.program, args.calibration, args.tune_thresholds, test_only = args.test)
