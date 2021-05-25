@@ -2,6 +2,7 @@
 
 import seaborn as sns
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
@@ -194,7 +195,7 @@ def plot_voltages_from_scan( db, scan_index, xval='TAP0', plotdir='plots/voltage
     plt.savefig( f'{full_plot_base}_zoomed.png'  )
 
 
-def plot_ber_vs_tap(db, xval='TAP0', plotdir='plots/summary', do_cleaning=True):
+def plot_ber_vs_tap(db, xval='TAP0', plotdir='plots/summary', do_cleaning=True, do_size=False, min_frames=1e11):
     '''make scatter plots showing the relationship between tap settings and the BER as a function 
         of pre-emphasis settings. Disaggregating data as function of other observables like the module id and position'''
 
@@ -203,18 +204,25 @@ def plot_ber_vs_tap(db, xval='TAP0', plotdir='plots/summary', do_cleaning=True):
 
     df = db.get_info()
     if do_cleaning:
-        df = clean_data(df)
+        df = clean_data(df, min_frames=min_frames)
     df['Error_Rate'] = tdb.calculate_bit_error_rates( df, allow_zero=True )
-    df['Error_error'] = df['Error_Rate']*4
-    fg = sns.relplot( data=df, x=xval, y='Error_Rate', col='Pos',hue='Module', style='Chip', palette='Set2', alpha=0.9, units='scan_index', kind='line', estimator=None)
+    df = df[ df['Error_Rate'] >= 1e-20 ] #remove the zeros, but some zeros are stored as e-237 or something
+    
+    size_var = None
+    if do_size:
+        df['log $N_{frames}$'] = np.round(np.log10(df['NFrames']))
+        size_var =  'log $N_{frames}$' 
+
+    fg = sns.relplot( data=df, x=xval, y='Error_Rate', size=size_var,col='Pos',hue='Module', style='Chip', palette='Set2', alpha=0.9,  units='scan_index', kind='line', estimator=None)
     fg.set( yscale = 'log' )
+    fg.set(ylim=(0.3*1/max(df['NFrames']), 1e-6))
     plot_name_base = f'BER_vs_{xval}_summaries'
     full_plot_base = os.path.join(plotdir, plot_name_base)
     plt.savefig( f'{full_plot_base}.pdf'  )
     plt.savefig( f'{full_plot_base}.png'  )
     
 
-def clean_data(df, min_frames=1e4):
+def clean_data(df, min_frames=1e11):
     '''remove data and scan points which may be considered problematic due to data taking conditions or quality.'''
     new_df = df[ df['NFrames'] >= min_frames ]
     new_df = new_df[ new_df['Pos'].isin( ['R11','R12','R13','R14','R15'] ) ]
@@ -236,6 +244,8 @@ if __name__=='__main__':
     parser.add_argument('--ygrid', dest='ygrid', choices=ber_variables + ['None'], default='Chip', help='variable for y-axis of facet grid [default %(default)s ]')
     parser.add_argument('--voltages', action='store_true', default=False, help='Plot the VDDD and VDDA values from the scan as a function of TAP0')
     parser.add_argument('--summary', action='store_true', default=False, help='Make a summary plot showing BER vs. TAP0 from all scans in the DB')
+    parser.add_argument('--min-frames', type=float, default=1e11, help='Minimum number of frames required for a scan to be considered in the summary plot. [default %(default)s]')
+    parser.add_argument('--do-size', action='store_true', default=False, help='Scale line size to the number of frames in the scan when doing summary plots. [default %(default)s]')
     
     args = parser.parse_args()
     db_fname = args.database
@@ -246,7 +256,7 @@ if __name__=='__main__':
 
 
     if args.summary:
-        plot_ber_vs_tap(db)
+        plot_ber_vs_tap(db, min_frames = args.min_frames, do_size=args.do_size)
     elif args.voltages:
         plot_voltages_from_scan(db, scan_number)
     else:    
