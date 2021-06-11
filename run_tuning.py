@@ -44,6 +44,9 @@ modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12',
 ids_and_chips_per_module_R1 = {
     #'mod10': (3, [0,1,2]), 
     #'mod12': (4, [0, 1, 2]),
+    'mod9' : ( 3, [0,1,2]),
+    'modT03' : (4, [0,1,2]),
+    'mod10' : (2, [0,1,2]),
     'mod7': (0,  [ 1, 2]),
     #'mod10': (0, [1, 2]),
     #'mod12' : (1, [0, 1, 2] )
@@ -75,44 +78,49 @@ ids_and_chips_per_module_SAB = {
 
 
 
-def main( run_time=3, reset_settings=False, reset_backend=False, run_programming=False, run_calibration=False, do_threshold_tuning=False, test_only=False ):
+def main( run_time=3, ring_id='R1', reset_settings=False, reset_backend=False, run_programming=False, run_calibration=False, do_threshold_tuning=False, test_only=False ):
     
     mod_for_tuning = 'mod7'
-    ring_for_tuning = 'R1'
     prefix_plotfolder = 'default'
     
     if reset_settings:
         reset_all_settings()
     if reset_backend:
-        run_reset(ring=ring_for_tuning, module=mod_for_tuning)
+        run_reset(ring=ring_id, module=mod_for_tuning)
     if run_programming:
-        run_programming(ring=ring_for_tuning, module=mod_for_tuning)
+        run_programming(ring=ring_id, module=mod_for_tuning)
     if run_calibration:
-        run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='physics')
-        run_calibration(ring=ring_for_tuning, module=mod_for_tuning, calib='pixelalive')
+        run_calibration(ring=ring_id, module=mod_for_tuning, calib='physics')
+        run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive')
     
-    if ring_for_tuning == 'singleQuad': plotfolderpostfix = ''
-    elif ring_for_tuning == 'R1': plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R1.keys()])
-    elif ring_for_tuning == 'R3': plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R3.keys()])
-    else: raise ValueError('Invalid \'ring_for_tuning\' specified: %s' % (ring_for_tuning))
+    if ring_id == 'singleQuad': 
+        plotfolderpostfix = ''
+        ids_and_chips = ids_and_chips_per_module_SAB
+    elif ring_id == 'R1': 
+        plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R1.keys()])
+        ids_and_chips = ids_and_chips_per_module_R1
+    elif ring_id == 'R3': 
+        plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R3.keys()])
+        ids_and_chips = ids_and_chips_per_module_R3
+    else: raise ValueError('Invalid \'ring_id\' specified: %s' % (ring_id))
     
     if do_threshold_tuning:
-        run_threshold_tuning(module=mod_for_tuning, ring=ring_for_tuning, plotfoldername=prefix_plotfolder+plotfolderpostfix)
+        run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix)
     
     # now run many BER tests
     tap_settings = []
-#    for tap0 in [1000,900,800,700,600,500,400,300,200]:#[1000,800,600,550,500,450,400,300 ]:
-    for tap0 in [1000,900,800,700,600,500,400,300]:
+#    for tap0 in [1000,900,800,700,600,500,400,300,200]:
+    for tap0 in [400]:
+    #for tap0 in [1000,900,800,700,600,500,400,300]:
         for tap1 in [0]:#[-120,-80,-40,0,40,80,120]:
-            for tap2 in[0]:#[-120,-80,-40,0,40,80,120]:
+            for tap2 in[0,-60]:#[-120,-80,-40,0,40,80,120]:
                 tap_settings.append((tap0, tap1, tap2))
                 
                 
-    #tap_settings = [(1000, 0, 0)]
     ring            = 'R1' #'singleQuad'
-    positions       = ['R14','R15','R11','R12','R13'] #['R11','R12','R13','R14','R15'] #['0']
+    positions       = ['R11','R12','R13','R14','R15'] #['R11','R12','R13','R14','R15'] #['0']
     logfolder_for_ber = logfolder + 'diskR1_5modules_R14_R15_HV35_long/' #'singleAdapterBoard/' #'diskR1_5modules_allRingsPowered_mod7/'
-    module_info_for_ber =  ids_and_chips_per_module_R1 #ids_and_chips_per_module_SAB 
+    module_info_for_ber =  ids_and_chips
     modules_for_ber = module_info_for_ber.keys()
     chips_per_module= {}
     for mod in module_info_for_ber: 
@@ -794,6 +802,7 @@ if __name__ == '__main__':
     parser.add_argument('--program',      dest='program',        action='store_true', default=False, help='run programming (CMSIT -p). [default: %(default)s]')
     parser.add_argument('--calibration',  dest='calibration',    action='store_true', default=False, help='run calibrations (physics and pixelalive). [default: %(default)s]')
     parser.add_argument('--thresholds',   dest='tune_thresholds', action='store_true', default=False, help='run threshold tuning. [default: %(default)s]')
+    parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R1',help='Ring (or SAB) to run run the test on')
     args = parser.parse_args()
 
-    main(args.run_time, args.reset_settings, args.reset_backend, args.program, args.calibration, args.tune_thresholds, test_only = args.test)
+    main(args.run_time, args.ring, args.reset_settings, args.reset_backend, args.program, args.calibration, args.tune_thresholds, test_only = args.test)
