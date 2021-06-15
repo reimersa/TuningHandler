@@ -38,7 +38,7 @@ txtfile_blueprint = '/home/uzh-tepx/Ph2_ACF/settings/RD53Files/CMSIT_RD53.txt'
 
 
 chiplist = [0, 1, 2, 3]
-modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12', 'modT01', 'modT02', 'modT03', 'modT04']
+modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12', 'modT01', 'modT02', 'modT03', 'modT04', 'modT05']
 
 
 ids_and_chips_per_module_R1 = {
@@ -53,13 +53,13 @@ ids_and_chips_per_module_R1 = {
     'mod11': (1, [0, 1, 2]), #new
 }
 
-#ids_and_chips_per_module_R1 = {
-#    'mod3': (0, [1, 2]),
-#    'mod4': (1, [0,1,2]),
-#    'mod6': (2, [0, 1, 2]),
-#    'mod9': (3, [0, 1, 2]),
-#    'mod7': (1, [0, 1])
-#}
+positions_per_module_R1 = {
+    'mod11':  'R15',
+    'mod7':   'R14',
+    'mod10':  'R13',
+    'modT03': 'R12',
+    'mod9':   'R11'
+}
 
 
 ids_and_chips_per_module_R3 = {
@@ -70,38 +70,50 @@ ids_and_chips_per_module_R3 = {
     'modT03': (7, [3]),
     'mod7':   (1, [3]),
 }
+positions_per_module_R3 = {
+    'mod11':  'R31',
+    'mod7':   'R32',
+    'mod10':  'R33',
+    'modT03': 'R34',
+    'mod9':   'R35'
+}
 
 
 ids_and_chips_per_module_SAB = {
-        'mod7': (1,[0,1,2,3])
-        }
+    'modT05': (1,[1,2,3])
+}
+        
+        
 
 
 
-def main( run_time=3, ring_id='R1', reset_settings=False, reset_backend=False, run_programming=False, run_calibration=False, do_threshold_tuning=False, test_only=False ):
+def main( run_time=3, ring_id='R1', reset_settings=False, reset_backend=False, do_programming=False, do_calibration=False, do_threshold_tuning=False, test_only=False ):
     
-    mod_for_tuning = 'mod7'
+    mod_for_tuning = 'modT05'
     prefix_plotfolder = 'default'
     
     if reset_settings:
         reset_all_settings()
     if reset_backend:
         run_reset(ring=ring_id, module=mod_for_tuning)
-    if run_programming:
+    if do_programming:
         run_programming(ring=ring_id, module=mod_for_tuning)
-    if run_calibration:
+    if do_calibration:
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='physics')
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive')
     
     if ring_id == 'singleQuad': 
         plotfolderpostfix = ''
         ids_and_chips = ids_and_chips_per_module_SAB
+        positions_per_module = {list(ids_and_chips)[0]: 'singleQuad'} # can only be one module
     elif ring_id == 'R1': 
         plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R1.keys()])
         ids_and_chips = ids_and_chips_per_module_R1
+        positions_per_module = positions_per_module_R1
     elif ring_id == 'R3': 
         plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R3.keys()])
         ids_and_chips = ids_and_chips_per_module_R3
+        positions_per_module = positions_per_module_R3
     else: raise ValueError('Invalid \'ring_id\' specified: %s' % (ring_id))
     
     if do_threshold_tuning:
@@ -109,16 +121,15 @@ def main( run_time=3, ring_id='R1', reset_settings=False, reset_backend=False, r
     
     # now run many BER tests
     tap_settings = []
-#    for tap0 in [1000,900,800,700,600,500,400,300,200]:
-    for tap0 in [400]:
+    for tap0 in [1000,900,800,700,600,500,400,300,200]:
+    #for tap0 in [400]:
     #for tap0 in [1000,900,800,700,600,500,400,300]:
-        for tap1 in [0]:#[-120,-80,-40,0,40,80,120]:
-            for tap2 in[0,-60]:#[-120,-80,-40,0,40,80,120]:
+        for tap1 in [0]: # [-120,-80,-40,0,40,80,120]
+            for tap2 in [0]: # [-120,-80,-40,0,40,80,120]
                 tap_settings.append((tap0, tap1, tap2))
                 
                 
-    ring            = 'R1' #'singleQuad'
-    positions       = ['R11','R12','R13','R14','R15'] #['R11','R12','R13','R14','R15'] #['0']
+    #positions       = ['R15','R14','R13','R12','R11'] #['R11','R12','R13','R14','R15'] #['0']
     logfolder_for_ber = logfolder + 'diskR1_5modules_R14_R15_HV35_long/' #'singleAdapterBoard/' #'diskR1_5modules_allRingsPowered_mod7/'
     module_info_for_ber =  ids_and_chips
     modules_for_ber = module_info_for_ber.keys()
@@ -142,10 +153,10 @@ def main( run_time=3, ring_id='R1', reset_settings=False, reset_backend=False, r
                 tap_settings_per_module_and_chip[module] = settings_per_chip
     
     db = None if test_only else tdb.TuningDataBase(dbfile)
-
-    last_index = run_ber_scan(modules =module_info_for_ber, 
+    
+    last_index = run_ber_scan(modules = module_info_for_ber, 
                               chips_per_module = chips_per_module, 
-                              ring = ring, positions=positions, 
+                              ring = ring_id, positions_per_module=positions_per_module, 
                               tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
                               mylogfolder = logfolder_for_ber, 
                               value=run_time, 
@@ -206,28 +217,30 @@ def run_threshold_tuning(module, ring, plotfoldername):
     reset_txt_files()
     
     module_per_id = {}
-    if not ring == "singleQuad":
-        if ring == 'R1':
-            id_per_module = ids_and_chips_per_module_R1
-        elif ring == 'R3':
-            id_per_module = ids_and_chips_per_module_R3
-        else: raise ValueError('Invalid value of \'ring\': %s' % (ring))
-        for modkey in id_per_module:
-            id = id_per_module[modkey][0]
-            module_per_id[id] = modkey
-    else: 
-        id_per_module = {module: 1} # single modules are always in J1 (second from the left)
-        module_per_id = {1: module}
+    #if not ring == "singleQuad":
+    if ring == 'R1':
+        id_per_module = ids_and_chips_per_module_R1
+    elif ring == 'R3':
+        id_per_module = ids_and_chips_per_module_R3
+    elif ring == 'SingleQuad':
+        id_per_module = ids_and_chips_per_module_SAB
+    else: raise ValueError('Invalid value of \'ring\': %s' % (ring))
+    for modkey in id_per_module:
+        id = id_per_module[modkey][0]
+        module_per_id[id] = modkey
+    #else: 
+    #    id_per_module = {module: 1} # single modules are always in J1 (second from the left)
+    #    module_per_id = {1: module}
         
     # reset all VThreshold_LINs to 400
     for module in id_per_module:
         fresh_thresholds = {}
-        if ring == 'singleQuad':
-            for chip in chiplist:
-                fresh_thresholds[chip] = '400'
-        elif ring == 'R1' or ring == 'R3':
-            for chip in id_per_module[module][1]:
-                fresh_thresholds[chip] = '400'
+        #if ring == 'singleQuad':
+        #    for chip in chiplist:
+        #        fresh_thresholds[chip] = '400'
+        #elif ring == 'R1' or ring == 'R3':
+        for chip in id_per_module[module][1]:
+            fresh_thresholds[chip] = '400'
         set_thresholds_for_module(module=module, thresholds=fresh_thresholds)
     print('Reset all VThreshold_LIN to 400.')
     
@@ -393,9 +406,20 @@ def run_reset(ring, module):
     
 def run_calibration(ring, module, calib):
     xmlfilename = get_xmlfile_name(ring=ring, module=module, calib=xmltype_per_calibration[calib])
+    if calib == 'physics':
+        xml_object = XMLInfo( os.path.join(xmlfolder, xmlfilename) ) 
+        tmp_xml_file = f'{xmlfilename}.tmp_for_mon.xml'
+        xml_object.enable_monitoring()
+        xml_object.save_xml_as( os.path.join(xmlfolder, tmp_xml_file ))
+        xmlfilename = tmp_xml_file
     command = 'CMSITminiDAQ -f %s -c %s' % (os.path.join(xmlfolder, xmlfilename), calib)
     print(command)
     os.system(command)
+    if calib == 'physics':
+        cleanup_command =  f'rm {os.path.join(xmlfolder, tmp_xml_file )}'
+        os.system(cleanup_command)
+        time.sleep(1)
+    
 
 
 def get_results_from_logfile( fname ):
@@ -688,9 +712,12 @@ def reset_txt_files(modules=modulelist, chips=chiplist):
     print('--> Reset txt files')
             
 def reset_xml_files():
+
+    if len(list(ids_and_chips_per_module_SAB)) != 1: raise ValueError('Exactly one module must be given in ids_and_chips_per_module_SAB, even if not used.')
+
     for type in daqsettings_per_xmltype:
         reset_singleQuad_xml_files(type=type, modules=modulelist)
-        prepare_singleQuad_xml_files(type_name=type, type_setting=type, modules=modulelist)
+        prepare_singleQuad_xml_files(type_name=type, type_setting=type, modules=list(ids_and_chips_per_module_SAB), chips=ids_and_chips_per_module_SAB[list(ids_and_chips_per_module_SAB)[0]][1])
         reset_and_prepare_Ring_xml_file(type, type, ids_and_chips_per_module_R1, 'R1')
         reset_and_prepare_Ring_xml_file(type, type, ids_and_chips_per_module_R3, 'R3')
     reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R1, 'R1')
@@ -701,7 +728,7 @@ def reset_singleQuad_xml_files(type, modules=modulelist, chips=chiplist):
     xmlobject = XMLInfo(xmlfile_blueprint)
     xmlobject.set_module_attribute_by_moduleid(0, 'Id', 1)
     xmlobject.set_txtfilepath_by_moduleid(1, txtfolder)
-    for chip in chiplist:
+    for chip in chips:
         if chip == 0: continue
         xmlobject.copy_chip_by_moduleid(1, 0, chip)
     for module in modules:
@@ -751,7 +778,7 @@ def reset_and_prepare_Ring_xml_file(type_name, type_setting, ids_and_chips_per_m
     xmlobject.save_xml_as(targetname)
 
 #PREPARE
-def prepare_singleQuad_xml_files(type_name, type_setting, modules=modulelist):
+def prepare_singleQuad_xml_files(type_name, type_setting, modules=modulelist, chips=chiplist):
     for module in modules:
         xmlfilename = os.path.join(xmlfolder, 'CMSIT_singleQuad_%s_%s.xml' % (module, type_name))
         xmlobject = XMLInfo(xmlfilename)
@@ -763,11 +790,13 @@ def prepare_singleQuad_xml_files(type_name, type_setting, modules=modulelist):
         chip_settings = get_chipsettings_from_json()
         chip_settings_thismodule = chip_settings[module]
         keepchips = []
-        for chip in chip_settings_thismodule:
-            settings = chip_settings_thismodule[chip]
+        #for chip in chip_settings_thismodule:
+        for chip in chips:
+            settings = chip_settings_thismodule[str(chip)]
             for setting in settings:
                 xmlobject.set_chip_setting_by_modulename(module, int(chip), setting, settings[setting])
-        xmlobject.keep_only_chips_by_modulename(module, [int(c) for c in chip_settings_thismodule.keys()])
+        #xmlobject.keep_only_chips_by_modulename(module, [int(c) for c in chip_settings_thismodule.keys()])
+        xmlobject.keep_only_chips_by_modulename(module, chips)
         xmlobject.save_xml_as(xmlfilename)
 
 
