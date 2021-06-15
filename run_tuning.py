@@ -6,6 +6,8 @@ import shutil as sh
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from collections import OrderedDict
+
 
 import json
 from yaml import safe_load
@@ -53,13 +55,13 @@ ids_and_chips_per_module_R1 = {
     'mod11': (1, [0, 1, 2]), #new
 }
 
-positions_per_module_R1 = {
+positions_per_module_R1 = OrderedDict({ #OrderedDict keeps initialization order for python 3.6+
     'mod11':  'R15',
     'mod7':   'R14',
     'mod10':  'R13',
     'modT03': 'R12',
     'mod9':   'R11'
-}
+})
 
 
 ids_and_chips_per_module_R3 = {
@@ -80,7 +82,7 @@ positions_per_module_R3 = {
 
 
 ids_and_chips_per_module_SAB = {
-    'modT05': (1,[1,2,3])
+    'modT05': (1,[2,3])
 }
         
         
@@ -222,7 +224,7 @@ def run_threshold_tuning(module, ring, plotfoldername):
         id_per_module = ids_and_chips_per_module_R1
     elif ring == 'R3':
         id_per_module = ids_and_chips_per_module_R3
-    elif ring == 'SingleQuad':
+    elif ring == 'singleQuad':
         id_per_module = ids_and_chips_per_module_SAB
     else: raise ValueError('Invalid value of \'ring\': %s' % (ring))
     for modkey in id_per_module:
@@ -246,9 +248,12 @@ def run_threshold_tuning(module, ring, plotfoldername):
     
     reset_xml_files()
     run_calibration(ring=ring, module=module, calib='pixelalive')
-    #run_calibration(ring=ring, module=module, calib='threqu')
-    #run_calibration(ring=ring, module=module, calib='noise')
+    run_calibration(ring=ring, module=module, calib='scurve')
+    run_calibration(ring=ring, module=module, calib='threqu')
+    run_calibration(ring=ring, module=module, calib='noise')
+    run_calibration(ring=ring, module=module, calib='scurve')
     run_calibration(ring=ring, module=module, calib='thradj')
+    run_calibration(ring=ring, module=module, calib='scurve')
         
         
     thresholds_per_id_and_chip = get_thresholds_from_last()
@@ -579,10 +584,10 @@ def get_num_settings( tap_settings ):
     return n_settings
     
 
-def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_module_and_chip, mylogfolder, mode='time', value=10, db=None):
+def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_settings_per_module_and_chip, mylogfolder, mode='time', value=10, db=None):
 
     n_settings = get_num_settings(tap_settings_per_module_and_chip) 
-    settings_are_correct = confirm_settings( modules, chips_per_module, ring, positions, n_settings, value, db)
+    settings_are_correct = confirm_settings( modules, chips_per_module, ring, positions_per_module, n_settings, value, db)
     if not settings_are_correct:
         print('Settings were not confirmed as correct, not running BER scan')
         return
@@ -650,7 +655,7 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
                 xmlobject.save_xml_as(xmlfile_for_ber)
                 
                 #command_p = 'CMSITminiDAQ -f %s p' % (xmlfile_for_ber) # Arne: Not necessary anymore?
-                log_file_name = os.path.join(mylogfolder, f'ber_{ring}_{module}_chip{chip}_pos{positions[moduleidx]}_{tap0}_{tap1}_{tap2}.log')
+                log_file_name = os.path.join(mylogfolder, f'ber_{ring}_{module}_chip{chip}_pos{positions_per_module[module]}_{tap0}_{tap1}_{tap2}.log')
                 command_ber = f'CMSITminiDAQ -f {xmlfile_for_ber} -c bertest 2>&1 | tee {log_file_name}' 
                 #command_ber = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, , value, os.path.join(mylogfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
 
@@ -675,8 +680,11 @@ def run_ber_scan(modules, chips_per_module, ring, positions, tap_settings_per_mo
                     run_info = get_all_info_from_logfile( log_file_name )
                     run_info.update( {'FC7_Hybrid_id': hybrid_no } )
 
-                    this_position = positions[moduleidx]
-                    other_positions = list(positions)
+                    this_position = positions_per_module[module]
+                    other_positions = []
+                    for k in positions_per_module:
+                        other_positions.append(positions_per_module[k])
+                    #other_positions = list(positions)
                     other_positions.remove(this_position)
                     run_info.update( {'other_powered_modules': other_positions} ) #storing the array object should be fine
 
