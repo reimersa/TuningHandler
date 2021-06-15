@@ -205,8 +205,8 @@ def plot_ber_vs_tap(db, xval='TAP0', plotdir='plots/summary', do_cleaning=True, 
     df = db.get_info()
     if do_cleaning:
         df = clean_data(df, min_frames=min_frames)
-    df['Error_Rate'] = tdb.calculate_bit_error_rates( df, allow_zero=True )
-    df = df[ df['Error_Rate'] >= 1e-20 ] #remove the zeros, but some zeros are stored as e-237 or something
+    df['Error_Rate'] = tdb.calculate_bit_error_rates( df, allow_zero=False )
+    #df = df[ df['Error_Rate'] >= 1e-20 ] #remove the zeros, but some zeros are stored as e-237 or something
     
     size_var = None
     if do_size:
@@ -215,7 +215,7 @@ def plot_ber_vs_tap(db, xval='TAP0', plotdir='plots/summary', do_cleaning=True, 
 
     fg = sns.relplot( data=df, x=xval, y='Error_Rate', size=size_var,col='Pos',hue='Module', style='Chip', palette='Set2', alpha=0.9,  units='scan_index', kind='line', estimator=None)
     fg.set( yscale = 'log' )
-    fg.set(ylim=(0.3*1/max(df['NFrames']), 1e-6))
+    fg.set(ylim=(0.3*1/max(df['NFrames']), 1e-3))
     plot_name_base = f'BER_vs_{xval}_summaries'
     full_plot_base = os.path.join(plotdir, plot_name_base)
     plt.savefig( f'{full_plot_base}.pdf'  )
