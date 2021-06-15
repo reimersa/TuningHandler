@@ -285,5 +285,27 @@
       "VOLTAGE_TRIM_DIG": "31",
       "Vthreshold_LIN": "353"
     }
+  },
+  "modT05": {
+    "0": {
+      "VOLTAGE_TRIM_ANA": "16",
+      "VOLTAGE_TRIM_DIG": "16",
+      "Vthreshold_LIN": "390"
+    },
+    "1": {
+      "VOLTAGE_TRIM_ANA": "16",
+      "VOLTAGE_TRIM_DIG": "16",
+      "Vthreshold_LIN": "390"
+    },
+    "2": {
+      "VOLTAGE_TRIM_ANA": "16",
+      "VOLTAGE_TRIM_DIG": "16",
+      "Vthreshold_LIN": "390"
+    },
+    "3": {
+      "VOLTAGE_TRIM_ANA": "16",
+      "VOLTAGE_TRIM_DIG": "16",
+      "Vthreshold_LIN": "390"
+    }
   }
 }
