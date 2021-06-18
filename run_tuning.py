@@ -66,7 +66,7 @@ positions_per_module_R1 = OrderedDict({ #OrderedDict keeps initialization order 
 
 ids_and_chips_per_module_R3 = {
     'mod11': (3, [3]), #R31
-    'mod9':  (1, [3]), #R32
+    #'mod9':  (1, [3]), #R32
     'mod3' : (2, [3]),#R33
     #'mod2D' : (0, [3]) #35
     'mod10': (7, [3]), #R36
@@ -141,7 +141,7 @@ def main( run_time=3, ring_id='R1', reset_settings=False, reset_backend=False, d
                 
                 
     #positions       = ['R15','R14','R13','R12','R11'] #['R11','R12','R13','R14','R15'] #['0']
-    logfolder_for_ber = logfolder + 'diskR1_5modules_R14_R15_HV35_long/' #'singleAdapterBoard/' #'diskR1_5modules_allRingsPowered_mod7/'
+    logfolder_for_ber = logfolder #+ 'diskR1_5modules_R14_R15_HV35_long/' #'singleAdapterBoard/' #'diskR1_5modules_allRingsPowered_mod7/'
     module_info_for_ber =  ids_and_chips
     modules_for_ber = module_info_for_ber.keys()
     chips_per_module= {}
@@ -457,8 +457,8 @@ def get_results_from_logfile( fname ):
                 l = escape_ansi(l)
                 if 'Final number of PRBS frames sent:' in l:
                     nframes = safe_convert( l.split(' ')[-1], int, 'NFrames')
-                elif 'Final BER counter:' in l:
-                    nber = safe_convert( l.split(' ')[-1], int, 'NBER')
+                elif 'Final counter:' in l:
+                    nber = safe_convert( l.split(' ')[-4], int, 'NBER') #Changed with a new version of PH2ACF
 
     return (nframes, nber)
 
