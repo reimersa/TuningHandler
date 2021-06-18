@@ -31,8 +31,8 @@ import argparse
 xmlfolder = 'xml/'
 txtfolder = 'txt/'
 logfolder = 'log/'
-dbfile  = 'db/ber.json'
 plotfolder = 'plots/'
+dbfile  = 'db/ber.json'
 xmlfile_blueprint = '/home/uzh-tepx/Ph2_ACF/settings/CMSIT.xml'
 # xmlfile_blueprint = 'xml/CMSIT.xml'
 txtfile_blueprint = '/home/uzh-tepx/Ph2_ACF/settings/RD53Files/CMSIT_RD53.txt'
@@ -40,7 +40,7 @@ txtfile_blueprint = '/home/uzh-tepx/Ph2_ACF/settings/RD53Files/CMSIT_RD53.txt'
 
 
 chiplist = [0, 1, 2, 3]
-modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12', 'modT01', 'modT02', 'modT03', 'modT04', 'modT05']
+modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12', 'modT01', 'modT02', 'modT03', 'modT04', 'modT08', 'modT09']
 
 
 ids_and_chips_per_module_R1 = {
@@ -65,24 +65,32 @@ positions_per_module_R1 = OrderedDict({ #OrderedDict keeps initialization order 
 
 
 ids_and_chips_per_module_R3 = {
-    'mod9':  (4, [3]),
-    'mod10': (5, [3]),
-    'mod11': (6, [3]),
-    'mod12': (2, [3]),
-    'modT03': (7, [3]),
-    'mod7':   (1, [3]),
+    'mod11': (3, [3]), #R31
+    'mod9':  (1, [3]), #R32
+    'mod3' : (2, [3]),#R33
+    #'mod2D' : (0, [3]) #35
+    'mod10': (7, [3]), #R36
+    'mod7':   (5, [3]),#R37
+    'modT01':(6,[3]), #R38
+    'modT03': (4, [3]), #R39
+    #'mod10': (5, [3]),
+    #'mod12': (2, [3]),
 }
 positions_per_module_R3 = {
     'mod11':  'R31',
-    'mod7':   'R32',
-    'mod10':  'R33',
-    'modT03': 'R34',
-    'mod9':   'R35'
+    'mod9':   'R32',
+    'mod3':  'R33',
+    'mod4': 'R34',
+    'mod2D': 'R35',
+    'mod10': 'R36',
+    'mod7':   'R37',
+    'modT01': 'R38',
+    'modT03': 'R39',
 }
 
 
 ids_and_chips_per_module_SAB = {
-    'modT05': (1,[2,3])
+    'modT09': (1, [0,1,2,3])
 }
         
         
@@ -91,7 +99,8 @@ ids_and_chips_per_module_SAB = {
 
 def main( run_time=3, ring_id='R1', reset_settings=False, reset_backend=False, do_programming=False, do_calibration=False, do_threshold_tuning=False, test_only=False ):
     
-    mod_for_tuning = 'modT05'
+    
+    mod_for_tuning = 'modT09'
     prefix_plotfolder = 'default'
     
     if reset_settings:
@@ -123,7 +132,7 @@ def main( run_time=3, ring_id='R1', reset_settings=False, reset_backend=False, d
     
     # now run many BER tests
     tap_settings = []
-    for tap0 in [1000,900,800,700,600,500,400,300,200]:
+    for tap0 in [1000]:#,900,800,700,600,500,400,300,200]:
     #for tap0 in [400]:
     #for tap0 in [1000,900,800,700,600,500,400,300]:
         for tap1 in [0]: # [-120,-80,-40,0,40,80,120]
@@ -164,6 +173,7 @@ def main( run_time=3, ring_id='R1', reset_settings=False, reset_backend=False, d
                               value=run_time, 
                               db=db)
     print(f'Finished Scan {last_index}')
+    
 
 def ask_for_name(db):
     print('Would you like to give this scan a name? [y/n]')
@@ -253,7 +263,6 @@ def run_threshold_tuning(module, ring, plotfoldername):
     run_calibration(ring=ring, module=module, calib='noise')
     run_calibration(ring=ring, module=module, calib='scurve')
     run_calibration(ring=ring, module=module, calib='thradj')
-    run_calibration(ring=ring, module=module, calib='scurve')
         
         
     thresholds_per_id_and_chip = get_thresholds_from_last()
@@ -262,6 +271,7 @@ def run_threshold_tuning(module, ring, plotfoldername):
         print('set the following thresholds for module %s with id %s: '% (module_per_id[id], str(id)), thresholds_per_id_and_chip[id])
         
     reset_xml_files()
+    run_calibration(ring=ring, module=module, calib='scurve')
     run_calibration(ring=ring, module=module, calib='threqu')
     run_calibration(ring=ring, module=module, calib='noise')
     run_calibration(ring=ring, module=module, calib='scurve')
@@ -622,6 +632,7 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
                 reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R1, ring)
             elif ring == 'R3':
                 xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_disk%s_%s.xml' % (ring, 'ber'))
+                reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R3, ring)
             xmlobject = XMLInfo(xmlfile_for_ber)
             print( module, chip)
             xmlobject.keep_only_modules_by_modulename([module])
@@ -839,7 +850,7 @@ if __name__ == '__main__':
     parser.add_argument('--program',      dest='program',        action='store_true', default=False, help='run programming (CMSIT -p). [default: %(default)s]')
     parser.add_argument('--calibration',  dest='calibration',    action='store_true', default=False, help='run calibrations (physics and pixelalive). [default: %(default)s]')
     parser.add_argument('--thresholds',   dest='tune_thresholds', action='store_true', default=False, help='run threshold tuning. [default: %(default)s]')
-    parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R1',help='Ring (or SAB) to run run the test on')
+    parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R3',help='Ring (or SAB) to run run the test on')
     args = parser.parse_args()
 
-    main(args.run_time, args.ring, args.reset_settings, args.reset_backend, args.program, args.calibration, args.tune_thresholds, test_only = args.test)
+    main( args.run_time, args.ring, args.reset_settings, args.reset_backend, args.program, args.calibration, args.tune_thresholds, test_only = args.test)
