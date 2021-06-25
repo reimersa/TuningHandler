@@ -88,8 +88,18 @@ ids_and_chips_per_module_SAB = {
     'modT09': (1, [0,1,2,3])
 }
         
+#A dictionary of different scans with settings which are (TAP0 list, TAP1 list, TAP2 list).
+ber_scan_types = { 'TAP0'   : ( [1000,900,800,700,600,500,400,300,200],[0],[0] ),
+               'Single' : ( [1000], [0], [0] ),
+               'Full'   : ( [1000,900,800,700,600,500,400,300,200],[-120,-80,-40,0,40,80,120],[-120,-80,-40,0,40,80,120])
+             }
         
-
+def get_scan_taps( scan_name ):
+    if scan_name in ber_scan_types:
+        return ber_scan_types[scan_name]
+    else:
+        raise KeyError(f'''Could not find scan by name of {scan_name} in the list of scan types. 
+                        Known scans are {ber_scan_types.keys()}''')
 
 def setup_and_run_ber( run_time=3, ring_id='R1', test_only=False, scan_type='TAP0' ):
 
@@ -109,13 +119,11 @@ def setup_and_run_ber( run_time=3, ring_id='R1', test_only=False, scan_type='TAP
     
     # now run many BER tests
     tap_settings = []
-    for tap0 in [1000]: #[1000,900,800,700,600,500,400,300,200]:
-    #for tap0 in [400]:
-    #for tap0 in [1000,900,800,700,600,500,400,300]:
-        for tap1 in [0]: # [-120,-80,-40,0,40,80,120]
-            for tap2 in [0]: # [-120,-80,-40,0,40,80,120]
+    scan_taps = get_scan_taps(scan_type)
+    for tap0 in scan_taps[0]:
+        for tap1 in scan_taps[1]:
+            for tap2 in scan_taps[2]: 
                 tap_settings.append((tap0, tap1, tap2))
-                
                 
     #positions       = ['R15','R14','R13','R12','R11'] #['R11','R12','R13','R14','R15'] #['0']
     logfolder_for_ber = logfolder #+ 'diskR1_5modules_R14_R15_HV35_long/' #'singleAdapterBoard/' #'diskR1_5modules_allRingsPowered_mod7/'
@@ -824,6 +832,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run Tuning and BER Scan procedures')
     parser.add_argument('-t','--run-time', default=3, type=int, help='run time per setting in seconds. [default %(default)s]')
     parser.add_argument('--ber', action='store_true', default=False, help='run Bit Error Rate Scans [default: %(default)s]')
+    parser.add_argument('--scan-type', choices=ber_scan_types.keys(), default='TAP0', help='BER Scan type (determines which TAP values to scan over. [default: %(default)s]')
     parser.add_argument('--test', action='store_true', default=False, help='FOR BER: run in test mode - do not log any results in the database. [default: %(default)s]')
     parser.add_argument('--rst-settings', dest='reset_settings', action='store_true', default=False, help='resest all text and xml files. [default: %(default)s]')
     parser.add_argument('--rst-backend',  dest='reset_backend',  action='store_true', default=False, help='reset backend board. [default: %(default)s]')
@@ -861,5 +870,5 @@ if __name__ == '__main__':
         print('Done threshold tuning. \n\n')
     
     if args.ber:
-        setup_and_run_ber( args.run_time, args.ring, test_only = args.test)
+        setup_and_run_ber( args.run_time, args.ring, test_only = args.test, scan_type=args.scan_type)
         print('Done Bit Error Rate Test.\n\n')
