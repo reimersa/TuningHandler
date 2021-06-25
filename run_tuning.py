@@ -214,7 +214,6 @@ def run_threshold_tuning(module, ring, plotfoldername):
     reset_txt_files()
     
     module_per_id = {}
-    #if not ring == "singleQuad":
     if ring == 'R1':
         id_per_module = ids_and_chips_per_module_R1
     elif ring == 'R3':
@@ -225,17 +224,10 @@ def run_threshold_tuning(module, ring, plotfoldername):
     for modkey in id_per_module:
         id = id_per_module[modkey][0]
         module_per_id[id] = modkey
-    #else: 
-    #    id_per_module = {module: 1} # single modules are always in J1 (second from the left)
-    #    module_per_id = {1: module}
         
     # reset all VThreshold_LINs to 400
     for module in id_per_module:
         fresh_thresholds = {}
-        #if ring == 'singleQuad':
-        #    for chip in chiplist:
-        #        fresh_thresholds[chip] = '400'
-        #elif ring == 'R1' or ring == 'R3':
         for chip in id_per_module[module][1]:
             fresh_thresholds[chip] = '400'
         set_thresholds_for_module(module=module, thresholds=fresh_thresholds)
@@ -652,10 +644,8 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
                 xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_CONFIG', str(cml_cfg) )
                 xmlobject.save_xml_as(xmlfile_for_ber)
                 
-                #command_p = 'CMSITminiDAQ -f %s p' % (xmlfile_for_ber) # Arne: Not necessary anymore?
                 log_file_name = os.path.join(mylogfolder, f'ber_{ring}_{module}_chip{chip}_pos{positions_per_module[module]}_{tap0}_{tap1}_{tap2}.log')
                 command_ber = f'CMSITminiDAQ -f {xmlfile_for_ber} -c bertest 2>&1 | tee {log_file_name}' 
-                #command_ber = 'CMSITminiDAQ -f %s -c %s %i BE-FE 2>&1 | tee %s' % (xmlfile_for_ber, , value, os.path.join(mylogfolder, 'ber_%s_%s_chip%i_pos%s_%i_%i_%i.log' % (ring, module, chip, str(positions[moduleidx]), tap0, tap1, tap2)))
 
                 
                 if db is not None:
@@ -665,9 +655,6 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
                     print(f'the temperatures and voltages are {temps_and_voltages}')
 
                 # execute the OS command
-                #print(command_p)
-                #os.system(command_p)
-                #time.sleep(1)
                 start_time = datetime.now()
                 print(command_ber)
                 os.system(command_ber)
@@ -682,7 +669,6 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
                     other_positions = []
                     for k in positions_per_module:
                         other_positions.append(positions_per_module[k])
-                    #other_positions = list(positions)
                     other_positions.remove(this_position)
                     run_info.update( {'other_powered_modules': other_positions} ) #storing the array object should be fine
 
@@ -796,12 +782,10 @@ def prepare_singleQuad_xml_files(type_name, type_setting, modules=modulelist, ch
         chip_settings = get_chipsettings_from_json()
         chip_settings_thismodule = chip_settings[module]
         keepchips = []
-        #for chip in chip_settings_thismodule:
         for chip in chips:
             settings = chip_settings_thismodule[str(chip)]
             for setting in settings:
                 xmlobject.set_chip_setting_by_modulename(module, int(chip), setting, settings[setting])
-        #xmlobject.keep_only_chips_by_modulename(module, [int(c) for c in chip_settings_thismodule.keys()])
         xmlobject.keep_only_chips_by_modulename(module, chips)
         xmlobject.save_xml_as(xmlfilename)
 
