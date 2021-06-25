@@ -8,7 +8,7 @@ daqsettings_per_xmltype = {'scurve': {
                                'nEvents': '10000000',
                                'nEvtsBurst': '10000',
                                'INJtype': '0',
-                               'nClkDelays': '10'
+                               'nClkDelays': '20'
                                },
                            'source': {
                                'nEvents': '100000000',
