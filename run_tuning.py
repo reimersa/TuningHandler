@@ -104,15 +104,12 @@ def get_scan_taps( scan_name ):
 def setup_and_run_ber( run_time=3, ring_id='R1', test_only=False, scan_type='TAP0' ):
 
     if ring_id == 'singleQuad': 
-        plotfolderpostfix = ''
         ids_and_chips = ids_and_chips_per_module_SAB
         positions_per_module = {list(ids_and_chips)[0]: 'singleQuad'} # can only be one module
     elif ring_id == 'R1': 
-        plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R1.keys()])
         ids_and_chips = ids_and_chips_per_module_R1
         positions_per_module = positions_per_module_R1
     elif ring_id == 'R3': 
-        plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R3.keys()])
         ids_and_chips = ids_and_chips_per_module_R3
         positions_per_module = positions_per_module_R3
     else: raise ValueError('Invalid \'ring_id\' specified: %s' % (ring_id))
@@ -235,7 +232,7 @@ def run_threshold_tuning(module, ring, plotfoldername):
     
     reset_xml_files()
     run_calibration(ring=ring, module=module, calib='pixelalive')
-#    run_calibration(ring=ring, module=module, calib='scurve')
+    run_calibration(ring=ring, module=module, calib='scurve')
     run_calibration(ring=ring, module=module, calib='threqu')
 #    run_calibration(ring=ring, module=module, calib='scurve')
     run_calibration(ring=ring, module=module, calib='noise')
@@ -831,7 +828,14 @@ if __name__ == '__main__':
     ring_id = args.ring
     mod_for_tuning = args.mod_for_tuning
     prefix_plotfolder = 'default'
-    
+    if ring_id == 'singleQuad': 
+        plotfolderpostfix = ''
+    elif ring_id == 'R1': 
+        plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R1.keys()])
+    elif ring_id == 'R3': 
+        plotfolderpostfix = '_'.join([mod for mod in ids_and_chips_per_module_R3.keys()])
+    else: raise ValueError('Invalid \'ring_id\' specified: %s' % (ring_id))
+   
     if args.reset_settings:
         reset_all_settings()
         print('Done resestting all settings.\n\n')
