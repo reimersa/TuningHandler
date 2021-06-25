@@ -65,13 +65,13 @@ positions_per_module_R1 = OrderedDict({ #OrderedDict keeps initialization order 
 
 
 ids_and_chips_per_module_R3 = {
-#    'modT09': (1, [3]),
+    'modT09': (1, [3]),
     'mod9':   (2, [3]), 
-#    'mod11':  (3, [3]), 
-#    'mod7': (4, [3]),
+    'mod11':  (3, [3]), 
+    #'mod7': (4, [3]),
     #'modT08':   (5, [3]),
-#    'mod12':  (6,[3]), 
-#    'mod10':  (7, [3]), 
+    'mod12':  (6,[3]), 
+    #'mod10':  (7, [3]), 
 }
 positions_per_module_R3 = {
     'modT09': 'R35',
@@ -206,7 +206,7 @@ def confirm_settings( modules, chips, ring, positions, n_settings, value, db):
         print('response not understood, please use "y" or "n", not running tuning.')
         return False
 
-def run_threshold_tuning(module, ring, plotfoldername):
+def run_threshold_tuning(module, ring, plotfoldername, intermediate_scurves=False):
     reset_xml_files()
     reset_txt_files()
     
@@ -232,11 +232,17 @@ def run_threshold_tuning(module, ring, plotfoldername):
     
     reset_xml_files()
     run_calibration(ring=ring, module=module, calib='pixelalive')
-    run_calibration(ring=ring, module=module, calib='scurve')
+    if intermediate_scurves:
+        run_calibration(ring=ring, module=module, calib='scurve')
+
     run_calibration(ring=ring, module=module, calib='threqu')
-#    run_calibration(ring=ring, module=module, calib='scurve')
+    if intermediate_scurves:
+        run_calibration(ring=ring, module=module, calib='scurve')
+
     run_calibration(ring=ring, module=module, calib='noise')
-#    run_calibration(ring=ring, module=module, calib='scurve')
+    if intermediate_scurves:
+        run_calibration(ring=ring, module=module, calib='scurve')
+
     run_calibration(ring=ring, module=module, calib='thradj')
         
         
@@ -246,9 +252,13 @@ def run_threshold_tuning(module, ring, plotfoldername):
         print('set the following thresholds for module %s with id %s: '% (module_per_id[id], str(id)), thresholds_per_id_and_chip[id])
         
     reset_xml_files()
-#    run_calibration(ring=ring, module=module, calib='scurve')
+    if intermediate_scurves:
+        run_calibration(ring=ring, module=module, calib='scurve')
+
     run_calibration(ring=ring, module=module, calib='threqu')
-#    run_calibration(ring=ring, module=module, calib='scurve')
+    if intermediate_scurves:
+        run_calibration(ring=ring, module=module, calib='scurve')
+
     run_calibration(ring=ring, module=module, calib='noise')
     run_calibration(ring=ring, module=module, calib='scurve')
     plot_ph2acf_rootfile(runnr=get_last_runnr(), module_per_id=module_per_id, plotfoldername=plotfoldername)
@@ -820,6 +830,7 @@ if __name__ == '__main__':
     parser.add_argument('--program',      dest='program',        action='store_true', default=False, help='run programming (CMSIT -p). [default: %(default)s]')
     parser.add_argument('--calibration',  dest='calibration',    action='store_true', default=False, help='run calibrations (physics and pixelalive). [default: %(default)s]')
     parser.add_argument('--thresholds',   dest='tune_thresholds', action='store_true', default=False, help='run threshold tuning. [default: %(default)s]')
+    parser.add_argument('--all-scurves',  action='store_true', default=False, help='For threshold tuning: Run S-curves at all intermediate steps. [default: %(default)s]')
     parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R3',help='Ring (or SAB) to run run the test on')
     parser.add_argument('-m','--mod-for-tuning', choices=modulelist, default='modT09', help='Module used for tuning. [default: %(default)s]')
     args = parser.parse_args()
@@ -854,7 +865,7 @@ if __name__ == '__main__':
         print('Done physics and pixel alive scan.\n\n')
 
     if args.tune_thresholds:
-        run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix)
+        run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix, intermediate_scurves =  args.all_scurves)
         print('Done threshold tuning. \n\n')
     
     if args.ber:
