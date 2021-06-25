@@ -65,27 +65,22 @@ positions_per_module_R1 = OrderedDict({ #OrderedDict keeps initialization order 
 
 
 ids_and_chips_per_module_R3 = {
-    'mod11': (3, [3]), #R31
-    #'mod9':  (1, [3]), #R32
-    'mod3' : (2, [3]),#R33
-    #'mod2D' : (0, [3]) #35
-    'mod10': (7, [3]), #R36
-    'mod7':   (5, [3]),#R37
-    'modT01':(6,[3]), #R38
-    'modT03': (4, [3]), #R39
-    #'mod10': (5, [3]),
-    #'mod12': (2, [3]),
+#    'modT09': (1, [3]),
+    'mod9':   (2, [3]), 
+#    'mod11':  (3, [3]), 
+#    'mod7': (4, [3]),
+    #'modT08':   (5, [3]),
+#    'mod12':  (6,[3]), 
+#    'mod10':  (7, [3]), 
 }
 positions_per_module_R3 = {
+    'modT09': 'R35',
+    'mod9':   'R33',
     'mod11':  'R31',
-    'mod9':   'R32',
-    'mod3':  'R33',
-    'mod4': 'R34',
-    'mod2D': 'R35',
-    'mod10': 'R36',
-    'mod7':   'R37',
-    'modT01': 'R38',
-    'modT03': 'R39',
+    'mod7':   'R39',
+    'modT08': 'R37',
+    'mod12':  'R38',
+    'mod10':  'R36',
 }
 
 
@@ -96,23 +91,8 @@ ids_and_chips_per_module_SAB = {
         
 
 
+def setup_and_run_ber( run_time=3, ring_id='R1', test_only=False, scan_type='TAP0' ):
 
-def main( run_time=3, ring_id='R1', reset_settings=False, reset_backend=False, do_programming=False, do_calibration=False, do_threshold_tuning=False, test_only=False ):
-    
-    
-    mod_for_tuning = 'modT09'
-    prefix_plotfolder = 'default'
-    
-    if reset_settings:
-        reset_all_settings()
-    if reset_backend:
-        run_reset(ring=ring_id, module=mod_for_tuning)
-    if do_programming:
-        run_programming(ring=ring_id, module=mod_for_tuning)
-    if do_calibration:
-        run_calibration(ring=ring_id, module=mod_for_tuning, calib='physics')
-        run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive')
-    
     if ring_id == 'singleQuad': 
         plotfolderpostfix = ''
         ids_and_chips = ids_and_chips_per_module_SAB
@@ -127,12 +107,9 @@ def main( run_time=3, ring_id='R1', reset_settings=False, reset_backend=False, d
         positions_per_module = positions_per_module_R3
     else: raise ValueError('Invalid \'ring_id\' specified: %s' % (ring_id))
     
-    if do_threshold_tuning:
-        run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix)
-    
     # now run many BER tests
     tap_settings = []
-    for tap0 in [1000]:#,900,800,700,600,500,400,300,200]:
+    for tap0 in [1000]: #[1000,900,800,700,600,500,400,300,200]:
     #for tap0 in [400]:
     #for tap0 in [1000,900,800,700,600,500,400,300]:
         for tap1 in [0]: # [-120,-80,-40,0,40,80,120]
@@ -171,7 +148,7 @@ def main( run_time=3, ring_id='R1', reset_settings=False, reset_backend=False, d
                               tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
                               mylogfolder = logfolder_for_ber, 
                               value=run_time, 
-                              db=db)
+                             db=db)
     print(f'Finished Scan {last_index}')
     
 
@@ -258,10 +235,11 @@ def run_threshold_tuning(module, ring, plotfoldername):
     
     reset_xml_files()
     run_calibration(ring=ring, module=module, calib='pixelalive')
-    run_calibration(ring=ring, module=module, calib='scurve')
+#    run_calibration(ring=ring, module=module, calib='scurve')
     run_calibration(ring=ring, module=module, calib='threqu')
+#    run_calibration(ring=ring, module=module, calib='scurve')
     run_calibration(ring=ring, module=module, calib='noise')
-    run_calibration(ring=ring, module=module, calib='scurve')
+#    run_calibration(ring=ring, module=module, calib='scurve')
     run_calibration(ring=ring, module=module, calib='thradj')
         
         
@@ -271,8 +249,9 @@ def run_threshold_tuning(module, ring, plotfoldername):
         print('set the following thresholds for module %s with id %s: '% (module_per_id[id], str(id)), thresholds_per_id_and_chip[id])
         
     reset_xml_files()
-    run_calibration(ring=ring, module=module, calib='scurve')
+#    run_calibration(ring=ring, module=module, calib='scurve')
     run_calibration(ring=ring, module=module, calib='threqu')
+#    run_calibration(ring=ring, module=module, calib='scurve')
     run_calibration(ring=ring, module=module, calib='noise')
     run_calibration(ring=ring, module=module, calib='scurve')
     plot_ph2acf_rootfile(runnr=get_last_runnr(), module_per_id=module_per_id, plotfoldername=plotfoldername)
@@ -844,13 +823,43 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Run Tuning and BER Scan procedures')
     parser.add_argument('-t','--run-time', default=3, type=int, help='run time per setting in seconds. [default %(default)s]')
-    parser.add_argument('--test', action='store_true', default=False, help='run in test mode - do not log any results in the database. [default: %(default)s]')
+    parser.add_argument('--ber', action='store_true', default=False, help='run Bit Error Rate Scans [default: %(default)s]')
+    parser.add_argument('--test', action='store_true', default=False, help='FOR BER: run in test mode - do not log any results in the database. [default: %(default)s]')
     parser.add_argument('--rst-settings', dest='reset_settings', action='store_true', default=False, help='resest all text and xml files. [default: %(default)s]')
     parser.add_argument('--rst-backend',  dest='reset_backend',  action='store_true', default=False, help='reset backend board. [default: %(default)s]')
     parser.add_argument('--program',      dest='program',        action='store_true', default=False, help='run programming (CMSIT -p). [default: %(default)s]')
     parser.add_argument('--calibration',  dest='calibration',    action='store_true', default=False, help='run calibrations (physics and pixelalive). [default: %(default)s]')
     parser.add_argument('--thresholds',   dest='tune_thresholds', action='store_true', default=False, help='run threshold tuning. [default: %(default)s]')
     parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R3',help='Ring (or SAB) to run run the test on')
+    parser.add_argument('-m','--mod-for-tuning', choices=modulelist, default='modT09', help='Module used for tuning. [default: %(default)s]')
     args = parser.parse_args()
 
-    main( args.run_time, args.ring, args.reset_settings, args.reset_backend, args.program, args.calibration, args.tune_thresholds, test_only = args.test)
+    
+    ring_id = args.ring
+    mod_for_tuning = args.mod_for_tuning
+    prefix_plotfolder = 'default'
+    
+    if args.reset_settings:
+        reset_all_settings()
+        print('Done resestting all settings.\n\n')
+
+    if args.reset_backend:
+        run_reset(ring=ring_id, module=mod_for_tuning)
+        print('Done resestting backend.\n\n')
+
+    if args.program:
+        run_programming(ring=ring_id, module=mod_for_tuning)
+        print('Done running programming.\n\n')
+
+    if args.calibration:
+        run_calibration(ring=ring_id, module=mod_for_tuning, calib='physics')
+        run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive')
+        print('Done physics and pixel alive scan.\n\n')
+
+    if args.tune_thresholds:
+        run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix)
+        print('Done threshold tuning. \n\n')
+    
+    if args.ber:
+        setup_and_run_ber( args.run_time, args.ring, test_only = args.test)
+        print('Done Bit Error Rate Test.\n\n')
