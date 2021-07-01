@@ -68,10 +68,10 @@ ids_and_chips_per_module_R3 = {
     'modT09': (1, [3]),
     'mod9':   (2, [3]), 
     'mod11':  (3, [3]), 
-    #'mod7': (4, [3]),
-    #'modT08':   (5, [3]),
+    'mod7': (4, [3]),
+    'modT08':   (5, [3]),
     'mod12':  (6,[3]), 
-    #'mod10':  (7, [3]), 
+    'mod10':  (7, [3]), 
 }
 positions_per_module_R3 = {
     'modT09': 'R35',
@@ -833,12 +833,13 @@ if __name__ == '__main__':
     parser.add_argument('--all-scurves',  action='store_true', default=False, help='For threshold tuning: Run S-curves at all intermediate steps. [default: %(default)s]')
     parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R3',help='Ring (or SAB) to run run the test on')
     parser.add_argument('-m','--mod-for-tuning', choices=modulelist, default='modT09', help='Module used for tuning. [default: %(default)s]')
+    parser.add_argument('--prefix', default='default', help='Prefix to use for plotting folder name, when running threshold tuning. [defaults %(default)s]')
     args = parser.parse_args()
 
     
     ring_id = args.ring
     mod_for_tuning = args.mod_for_tuning
-    prefix_plotfolder = 'default'
+    prefix_plotfolder = f'{args.prefix}_{ring_id}_'
     if ring_id == 'singleQuad': 
         plotfolderpostfix = ''
     elif ring_id == 'R1': 
