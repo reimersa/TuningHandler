@@ -65,27 +65,28 @@ positions_per_module_R1 = OrderedDict({ #OrderedDict keeps initialization order 
 
 
 ids_and_chips_per_module_R3 = {
-    'modT09': (1, [3]),
-    'mod9':   (2, [3]), 
-    'mod11':  (3, [3]), 
+    'modT09': (1, [3]), 
+    'mod9':   (3, [3]), 
+    'mod11':  (6, [3]), 
     'mod7': (4, [3]),
-    'modT08':   (5, [3]),
-    'mod12':  (6,[3]), 
+#   #### 'modT08':   (6, [3]),
+    'mod12':  (5,[3]),  
     'mod10':  (7, [3]), 
 }
 positions_per_module_R3 = {
     'modT09': 'R35',
-    'mod9':   'R33',
-    'mod11':  'R31',
-    'mod7':   'R39',
-    'modT08': 'R37',
-    'mod12':  'R38',
+    'mod9':   'R31', 
+    'mod11':  'R38', 
+    'mod7':   'R37', 
+    #####'modT08': 'R38', 
+    'mod12':  'R39',
     'mod10':  'R36',
 }
 
 
 ids_and_chips_per_module_SAB = {
-    'modT09': (1, [0,1,2,3])
+    #'mod7': (1, [0,1,2,3])
+    'modT08': (1, [3])
 }
         
 #A dictionary of different scans with settings which are (TAP0 list, TAP1 list, TAP2 list).
@@ -642,13 +643,14 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
                 xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_TAP0_BIAS', str(tap0))
                 xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_TAP1_BIAS', str(abs(tap1)) ) #inversion is in a separate config setting
                 xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_TAP2_BIAS', str(abs(tap2)) ) #inversion is in a separate Config setting
-                #CML_CFG bits are used to set the inversion for tap0 and tap1
-                cml_cfg = 63 
+                xmlobject.set_chip_setting_by_modulename(module,chip,'CML_CONFIG_SER_EN_TAP', '0b11') #Enable tap1 and tap2
+                #Need to set the inversion for tap1 and tap2 properly
+                tap_inv = 0
                 if tap1 < 0:
-                    cml_cfg += 64 #TAP1 inversion is 6th bit
+                    tap_inv += 1
                 if tap2 < 0:
-                    cml_cfg += 128 #TAP2 inversion is 7th bit
-                xmlobject.set_chip_setting_by_modulename(module, chip, 'CML_CONFIG', str(cml_cfg) )
+                    tap_inv += 2
+                xmlobject.set_chip_setting_by_modulename(module,chip,'CML_CONFIG_SER_INV_TAP', '0b{:02b}'.format(tap_inv))
                 xmlobject.save_xml_as(xmlfile_for_ber)
                 
                 log_file_name = os.path.join(mylogfolder, f'ber_{ring}_{module}_chip{chip}_pos{positions_per_module[module]}_{tap0}_{tap1}_{tap2}.log')
@@ -829,6 +831,7 @@ if __name__ == '__main__':
     parser.add_argument('--rst-backend',  dest='reset_backend',  action='store_true', default=False, help='reset backend board. [default: %(default)s]')
     parser.add_argument('--program',      dest='program',        action='store_true', default=False, help='run programming (CMSIT -p). [default: %(default)s]')
     parser.add_argument('--calibration',  dest='calibration',    action='store_true', default=False, help='run calibrations (physics and pixelalive). [default: %(default)s]')
+    parser.add_argument('--vtuning',  dest='vtuning',    action='store_true', default=False, help='tune VDDD/A [default: %(default)s]')
     parser.add_argument('--thresholds',   dest='tune_thresholds', action='store_true', default=False, help='run threshold tuning. [default: %(default)s]')
     parser.add_argument('--all-scurves',  action='store_true', default=False, help='For threshold tuning: Run S-curves at all intermediate steps. [default: %(default)s]')
     parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R3',help='Ring (or SAB) to run run the test on')
@@ -860,11 +863,16 @@ if __name__ == '__main__':
         run_programming(ring=ring_id, module=mod_for_tuning)
         print('Done running programming.\n\n')
 
+    if args.vtuning:
+        run_calibration(ring=ring_id, module=mod_for_tuning, calib='voltagetuning')
+        print('Done voltage tuning.')
+
     if args.calibration:
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='physics')
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive')
         print('Done physics and pixel alive scan.\n\n')
 
+        
     if args.tune_thresholds:
         run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix, intermediate_scurves =  args.all_scurves)
         print('Done threshold tuning. \n\n')
