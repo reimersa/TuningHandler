@@ -24,4 +24,6 @@ xmltype_per_calibration = {'physics': 'scurve',
                            'pixelalive': 'scurve',
                            'noise': 'noise',
                            'threqu': 'scurve',
-                           'thradj': 'scurve'}
+                           'thradj': 'scurve',
+                           'voltagetuning': 'scurve',
+}
