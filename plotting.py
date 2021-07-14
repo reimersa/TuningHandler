@@ -60,6 +60,7 @@ def plot_all_ber_from_scan(  db, scan_index, plotdir='plots/',
         #In principle there can be a different limit for each point shown in the plot
         #Might be nice to handle that somehow
         min_limit = 1./file_group['NFrames'].max()
+        print(file_group['NFrames'].max(), file_group['NFrames'], min_limit)
         param_value_string = ', '.join([ f'{param} = {value}' for param, value in zip(group_on, group_values) ])
         title = f'{param_value_string}, Position {pos} \n BER lower limit: {min_limit:.2e}' 
 
@@ -195,7 +196,7 @@ def plot_voltages_from_scan( db, scan_index, xval='TAP0', plotdir='plots/voltage
     plt.savefig( f'{full_plot_base}_zoomed.png'  )
 
 
-def plot_ber_vs_tap(db, xval='TAP0', plotdir='plots/summary', do_cleaning=True, do_size=False, min_frames=1e11):
+def plot_ber_vs_tap(db, ring, xval='TAP0', plotdir='plots/summary', do_cleaning=True, do_size=False, min_frames=1e11):
     '''make scatter plots showing the relationship between tap settings and the BER as a function 
         of pre-emphasis settings. Disaggregating data as function of other observables like the module id and position'''
 
@@ -204,7 +205,7 @@ def plot_ber_vs_tap(db, xval='TAP0', plotdir='plots/summary', do_cleaning=True, 
 
     df = db.get_info()
     if do_cleaning:
-        df = clean_data(df, min_frames=min_frames)
+        df = clean_data(df, ring=ring, min_frames=min_frames)
     df['Error_Rate'] = tdb.calculate_bit_error_rates( df, allow_zero=False )
     #df = df[ df['Error_Rate'] >= 1e-20 ] #remove the zeros, but some zeros are stored as e-237 or something
     
@@ -216,16 +217,22 @@ def plot_ber_vs_tap(db, xval='TAP0', plotdir='plots/summary', do_cleaning=True, 
     fg = sns.relplot( data=df, x=xval, y='Error_Rate', size=size_var,col='Pos',hue='Module', style='Chip', palette='Set2', alpha=0.9,  units='scan_index', kind='line', estimator=None)
     fg.set( yscale = 'log' )
     fg.set(ylim=(0.3*1/max(df['NFrames']), 1e-3))
-    plot_name_base = f'BER_vs_{xval}_summaries'
+    plot_name_base = f'BER_vs_{xval}_{ring}_summaries'
     full_plot_base = os.path.join(plotdir, plot_name_base)
     plt.savefig( f'{full_plot_base}.pdf'  )
     plt.savefig( f'{full_plot_base}.png'  )
     
 
-def clean_data(df, min_frames=1e11):
+def clean_data(df, ring, min_frames=1e11):
     '''remove data and scan points which may be considered problematic due to data taking conditions or quality.'''
+    
+    positions_per_ring = {
+    'R1' : ['R11','R12','R13','R14','R15'],
+    'R3' : ['R31','R32','R33','R34','R35', 'R36', 'R37', 'R38', 'R39']
+    }
     new_df = df[ df['NFrames'] >= min_frames ]
-    new_df = new_df[ new_df['Pos'].isin( ['R11','R12','R13','R14','R15'] ) ]
+    print(new_df['Pos'])
+    new_df = new_df[ new_df['Pos'].isin( positions_per_ring[ring] ) ]
     new_df = new_df[ (new_df['TAP1'] == 0) & (new_df['TAP2'] == 0) ]
     #new_df = new_df[ ~new_df['name'].isnull() ]
     new_df = new_df[ new_df['NBER'] < 10e6 ]
@@ -245,6 +252,7 @@ if __name__=='__main__':
     parser.add_argument('--voltages', action='store_true', default=False, help='Plot the VDDD and VDDA values from the scan as a function of TAP0')
     parser.add_argument('--summary', action='store_true', default=False, help='Make a summary plot showing BER vs. TAP0 from all scans in the DB')
     parser.add_argument('--min-frames', type=float, default=1e11, help='Minimum number of frames required for a scan to be considered in the summary plot. [default %(default)s]')
+    parser.add_argument('--ring', type=str, default='R1', choices=['R1', 'R3', 'R5'], help='Ring to plot summary of. [default %(default)s]')
     parser.add_argument('--do-size', action='store_true', default=False, help='Scale line size to the number of frames in the scan when doing summary plots. [default %(default)s]')
     
     args = parser.parse_args()
@@ -256,7 +264,7 @@ if __name__=='__main__':
 
 
     if args.summary:
-        plot_ber_vs_tap(db, min_frames = args.min_frames, do_size=args.do_size)
+        plot_ber_vs_tap(db, ring = args.ring, min_frames = args.min_frames, do_size=args.do_size)
     elif args.voltages:
         plot_voltages_from_scan(db, scan_number)
     else:    
