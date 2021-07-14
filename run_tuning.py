@@ -86,7 +86,7 @@ positions_per_module_R3 = {
 
 ids_and_chips_per_module_SAB = {
     #'mod7': (1, [0,1,2,3])
-    'modT08': (1, [3])
+    'modT08': (1, [1, 2, 3])
 }
         
 #A dictionary of different scans with settings which are (TAP0 list, TAP1 list, TAP2 list).
