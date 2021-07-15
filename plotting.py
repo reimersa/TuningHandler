@@ -60,7 +60,6 @@ def plot_all_ber_from_scan(  db, scan_index, plotdir='plots/',
         #In principle there can be a different limit for each point shown in the plot
         #Might be nice to handle that somehow
         min_limit = 1./file_group['NFrames'].max()
-        print(file_group['NFrames'].max(), file_group['NFrames'], min_limit)
         param_value_string = ', '.join([ f'{param} = {value}' for param, value in zip(group_on, group_values) ])
         title = f'{param_value_string}, Position {pos} \n BER lower limit: {min_limit:.2e}' 
 
@@ -231,7 +230,6 @@ def clean_data(df, ring, min_frames=1e11):
     'R3' : ['R31','R32','R33','R34','R35', 'R36', 'R37', 'R38', 'R39']
     }
     new_df = df[ df['NFrames'] >= min_frames ]
-    print(new_df['Pos'])
     new_df = new_df[ new_df['Pos'].isin( positions_per_ring[ring] ) ]
     new_df = new_df[ (new_df['TAP1'] == 0) & (new_df['TAP2'] == 0) ]
     #new_df = new_df[ ~new_df['name'].isnull() ]
