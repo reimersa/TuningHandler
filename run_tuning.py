@@ -40,7 +40,7 @@ txtfile_blueprint = '/home/uzh-tepx/Ph2_ACF/settings/RD53Files/CMSIT_RD53.txt'
 
 
 chiplist = [0, 1, 2, 3]
-modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12', 'modT01', 'modT02', 'modT03', 'modT04', 'modT08', 'modT09']
+modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12', 'modT01', 'modT02', 'modT03', 'modT04', 'modT08', 'modT09', 'modT10','modT11']
 
 
 ids_and_chips_per_module_R1 = {
@@ -69,7 +69,6 @@ ids_and_chips_per_module_R3 = {
     'mod9':   (3, [3]), 
     'mod11':  (6, [3]), 
     'mod7': (4, [3]),
-#   #### 'modT08':   (6, [3]),
     'mod12':  (5,[3]),  
     'mod10':  (7, [3]), 
 }
@@ -78,7 +77,6 @@ positions_per_module_R3 = {
     'mod9':   'R31', 
     'mod11':  'R38', 
     'mod7':   'R37', 
-    #####'modT08': 'R38', 
     'mod12':  'R39',
     'mod10':  'R36',
 }
@@ -86,7 +84,7 @@ positions_per_module_R3 = {
 
 ids_and_chips_per_module_SAB = {
     #'mod7': (1, [0,1,2,3])
-    'modT08': (1, [1, 2, 3])
+    'modT11': (1, [0, 2, 3])
 }
         
 #A dictionary of different scans with settings which are (TAP0 list, TAP1 list, TAP2 list).
@@ -428,6 +426,7 @@ def get_results_from_logfile( fname ):
 
     nframes = -1
     nber    = -1
+    speed   = -1
     with open( fname, 'r') as f:
 
         lines = None
@@ -446,8 +445,18 @@ def get_results_from_logfile( fname ):
                     nframes = safe_convert( l.split(' ')[-1], int, 'NFrames')
                 elif 'Final counter:' in l:
                     nber = safe_convert( l.split(' ')[-4], int, 'NBER') #Changed with a new version of PH2ACF
+                elif 'Up-link speed:' in l:
+                    speed = safe_convert( l.split(' ')[-2], float, 'Up-link Sp(eed')
+                    units = l.split(' ')[-1] #should be either Gbit/s or Mbits/s 
+                    if units == 'Gbits/s':
+                    	pass #use 'Gbits/s as default unit'
+                    elif units == 'Mbit/s':
+                    	speed /= 1000
+                    else:
+                    	print(f'ERROR: Could not get the units of the uplink speed! did not pass any of the known cases! found: {units}.')
+                    	
 
-    return (nframes, nber)
+    return (nframes, nber, speed)
 
 def get_settings_from_logfile( fname ):
     basename_no_ext = os.path.splitext(os.path.basename( fname ))[0]
@@ -468,8 +477,8 @@ def get_settings_from_logfile( fname ):
 def get_all_info_from_logfile( fname ):
 
     all_info = get_settings_from_logfile( fname )
-    nframes, nber = get_results_from_logfile( fname )
-    all_info.update( { 'NFrames' : nframes, 'NBER' : nber} )
+    nframes, nber, uplink_speed = get_results_from_logfile( fname )
+    all_info.update( { 'NFrames' : nframes, 'NBER' : nber, 'UpLinkSpeedGbs': uplink_speed } )
 
     return all_info
 
