@@ -3,18 +3,24 @@
 daqsettings_per_xmltype = {'scurve': {
                                'nEvents': '100',
                                'nEvtsBurst': '100',
+                               'TargetThr' : '2000',
+                               'ThrStart'  : '300',
                                },
                            'noise': {
                                'nEvents': '10000000',
                                'nEvtsBurst': '10000',
                                'INJtype': '0',
-                               'nClkDelays': '20'
+                               'nClkDelays': '30',
+                               'TargetThr' : '2000',
+                               'ThrStart'  : '300',
                                },
                            'source': {
                                'nEvents': '100000000',
                                'nEvtsBurst': '10000',
                                'INJtype': '0',
-                               'nClkDelays': '10'
+                               'nClkDelays': '10',
+                               'TargetThr' : '2000',
+                               'ThrStart'  : '300',
                                }
                            }
                            
