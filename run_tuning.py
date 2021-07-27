@@ -494,9 +494,9 @@ def get_results_from_logfile( fname ):
                     nber = safe_convert( l.split(' ')[-4], int, 'NBER') #Changed with a new version of PH2ACF
                 elif 'Up-link speed:' in l:
                     speed = safe_convert( l.split(' ')[-2], float, 'Up-link Sp(eed')
-                    units = l.split(' ')[-1] #should be either Gbit/s or Mbits/s 
-                    if units == 'Gbits/s':
-                    	pass #use 'Gbits/s as default unit'
+                    units = l.split(' ')[-1].strip() #should be either Gbit/s or Mbit/s 
+                    if units == 'Gbit/s':
+                    	pass #use 'Gbit/s as default unit'
                     elif units == 'Mbit/s':
                     	speed /= 1000
                     else:
