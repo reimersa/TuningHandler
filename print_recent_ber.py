@@ -46,6 +46,8 @@ if __name__=='__main__':
         df = df[ columns ]
     else:
         suppress_columns = ['start_time','end_time','time_zone_human','end_time_human','name','Ring']
-        df.drop(suppress_columns, axis=1, inplace=True)
+        for col in suppress_columns:
+            if col in df.columns:
+                df.drop([col], axis=1, inplace=True)
     pd.set_option('display.max_rows', args.nentries )
     print( df.head(args.nentries) )

@@ -32,7 +32,8 @@ xmlfolder = 'xml/'
 txtfolder = 'txt/'
 logfolder = 'log/'
 plotfolder = 'plots/'
-dbfile  = 'db/ber.json'
+ber_dbfile  = 'ber_db/ber.json'
+tuning_dbfile = 'tuning_db/tuning.json'
 xmlfile_blueprint = '/home/uzh-tepx/Ph2_ACF/settings/CMSIT.xml'
 # xmlfile_blueprint = 'xml/CMSIT.xml'
 txtfile_blueprint = '/home/uzh-tepx/Ph2_ACF/settings/RD53Files/CMSIT_RD53.txt'
@@ -40,7 +41,7 @@ txtfile_blueprint = '/home/uzh-tepx/Ph2_ACF/settings/RD53Files/CMSIT_RD53.txt'
 
 
 chiplist = [0, 1, 2, 3]
-modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12', 'modT01', 'modT02', 'modT03', 'modT04', 'modT08', 'modT09', 'modT10','modT11']
+modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12', 'modT01', 'modT02', 'modT03', 'modT04', 'modT08', 'modT09', 'modT10','modT11', 'modT12', 'modT14']
 
 
 ids_and_chips_per_module_R1 = {
@@ -65,26 +66,26 @@ positions_per_module_R1 = OrderedDict({ #OrderedDict keeps initialization order 
 
 
 ids_and_chips_per_module_R3 = {
-    'modT09': (1, [3]), 
-    'mod9':   (3, [3]), 
-    'mod11':  (6, [3]), 
-    'mod7': (4, [3]),
-    'mod12':  (5,[3]),  
-    'mod10':  (7, [3]), 
+    #'modT09': (1, [3]),  #checked
+    #'mod9':   (3, [3]), #checked
+    'mod11':  (6, [3]), #checked
+    #'mod7': (4, [3]), #cheked
+    'mod12':  (5,[3]),#checked
+    #'mod10':  (7, [3]), #checked
 }
 positions_per_module_R3 = {
-    'modT09': 'R35',
-    'mod9':   'R31', 
-    'mod11':  'R38', 
-    'mod7':   'R37', 
-    'mod12':  'R39',
-    'mod10':  'R36',
+    #'modT09': 'R35', #checked
+    'mod9':   'R31', #checked
+    'mod11':  'R38', #checked
+    'mod7':   'R37', #checked
+    'mod12':  'R39', #checked
+    'mod10':  'R36', #checked
 }
 
 
 ids_and_chips_per_module_SAB = {
-    #'mod7': (1, [0,1,2,3])
-    'modT11': (1, [0, 2, 3])
+    'mod7': (1, [3])
+    #'modT14': (1, [1, 2, 3])
 }
         
 #A dictionary of different scans with settings which are (TAP0 list, TAP1 list, TAP2 list).
@@ -93,6 +94,24 @@ ber_scan_types = { 'TAP0'   : ( [1000,900,800,700,600,500,400,300,200],[0],[0] )
                'Full'   : ( [1000,900,800,700,600,500,400,300,200],[-120,-80,-40,0,40,80,120],[-120,-80,-40,0,40,80,120])
              }
         
+def get_module_position( module, ring):
+
+    if ring_id == 'singleQuad': 
+        ids_and_chips = ids_and_chips_per_module_SAB
+        positions_per_module = {list(ids_and_chips)[0]: 'singleQuad'} # can only be one module
+    elif ring_id == 'R1': 
+        ids_and_chips = ids_and_chips_per_module_R1
+        positions_per_module = positions_per_module_R1
+    elif ring_id == 'R3': 
+        ids_and_chips = ids_and_chips_per_module_R3
+        positions_per_module = positions_per_module_R3
+    else: raise ValueError('Invalid \'ring_id\' specified: %s' % (ring_id))
+
+    if not module in positions_per_module:
+        raise ValueError('Invalid module specified: {module}. Modules in ring {ring} are {positions_per_module}')
+    return positions_per_module[module]
+   
+
 def get_scan_taps( scan_name ):
     if scan_name in ber_scan_types:
         return ber_scan_types[scan_name]
@@ -144,7 +163,7 @@ def setup_and_run_ber( run_time=3, ring_id='R1', test_only=False, scan_type='TAP
 
                 tap_settings_per_module_and_chip[module] = settings_per_chip
     
-    db = None if test_only else tdb.TuningDataBase(dbfile)
+    db = None if test_only else tdb.TuningDataBase(ber_dbfile)
     
     last_index = run_ber_scan(modules = module_info_for_ber, 
                               chips_per_module = chips_per_module, 
@@ -383,7 +402,7 @@ def plot_ph2acf_rootfile(runnr, module_per_id, plotfoldername, tag=''):
                 hist.Draw('colz')
                 ROOT.gStyle.SetOptStat(0);
                 outdir = os.path.join('plots', 'thresholds', plotfoldername, '')
-                outfilename = canvastitle + tag + '.pdf'
+                outfilename = canvastitle  + tag + '_' + runnrstr + '.pdf'
                 outfilename = outfilename.replace('Chip_', '%s_chip' % (modulename))
                 ensureDirectory(outdir)
                 outcanvas.SaveAs(outdir + outfilename)
@@ -404,7 +423,7 @@ def run_reset(ring, module):
     print(command)
     os.system(command)
     
-def run_calibration(ring, module, calib):
+def run_calibration(ring, module, calib, db=None):
     xmlfilename = get_xmlfile_name(ring=ring, module=module, calib=xmltype_per_calibration[calib])
     if calib == 'physics':
         xml_object = XMLInfo( os.path.join(xmlfolder, xmlfilename) ) 
@@ -412,14 +431,40 @@ def run_calibration(ring, module, calib):
         xml_object.enable_monitoring()
         xml_object.save_xml_as( os.path.join(xmlfolder, tmp_xml_file ))
         xmlfilename = tmp_xml_file
+
+    if not db is None: #Read temperatures and voltages for posterity
+        xml_object = XMLInfo( os.path.join(xmlfolder, xmlfilename) ) 
+        module_info = xml_object.get_module_info()
+        hybrid_chip_dct = {}
+        for mod, info in module_info.items():
+            hybrid_chip_dct[info['hybridId']] = info['chips']
+        temps_and_voltages = read_temps_and_voltages(hybrid_chip_dct, os.path.join(xmlfolder, xmlfilename) )
+
+
     command = 'CMSITminiDAQ -f %s -c %s' % (os.path.join(xmlfolder, xmlfilename), calib)
     print(command)
     os.system(command)
+
+    if not db is None:
+        scan_index = db.get_next_index()
+        run_number = get_last_runnr()
+        all_scan_info = []
+        for mod, mod_info in module_info.items():
+            hybrid_id = mod_info['hybridId']
+            for chip in mod_info['chips']:
+                pos = get_module_position(mod, ring)
+                scan_info =  {'ScanIndex': scan_index, 'ScanType': calib, 'Ring': ring, 'Pos': pos, 'RunNumber':run_number, 'Module':mod, 'Chip': chip} 
+                chip_temps_and_voltages = temps_and_voltages[hybrid_id][chip]
+                scan_info.update(chip_temps_and_voltages)
+                all_scan_info += [ scan_info ]
+        db.add_data( all_scan_info )
+        db.update()
+
     if calib == 'physics':
         cleanup_command =  f'rm {os.path.join(xmlfolder, tmp_xml_file )}'
         os.system(cleanup_command)
         time.sleep(1)
-    
+ 
 
 
 def get_results_from_logfile( fname ):
@@ -482,8 +527,7 @@ def get_all_info_from_logfile( fname ):
 
     return all_info
 
-
-def read_temps_and_voltages( chip, xml_file, board=0, optical_group=0, hybrid=0 ):
+def read_temps_and_voltages( dct, xml_file, board=0, optical_group=0 ):
   
         xml_object = XMLInfo( xml_file) 
         tmp_xml_file = f'{xml_file}.tmp_for_temp.xml'
@@ -497,7 +541,14 @@ def read_temps_and_voltages( chip, xml_file, board=0, optical_group=0, hybrid=0 
         os.system(monitoring_command)
         time.sleep(1)
         
-        temps_and_voltages = read_monitoring_log(chip, log_file_name, board, optical_group, hybrid)
+        temps_and_voltages = {}
+        for hybrid, chips in dct.items():
+            if len(chips) < 1: continue
+            temps_and_voltages[hybrid] = {}
+            for chip in chips:
+                result = read_monitoring_log(chip, log_file_name, board, optical_group, hybrid)
+                print(f'For hybrid {hybrid} and chip {chip} the temps and voltages are  {result}')
+                temps_and_voltages[hybrid][chip] = result
 
         #remove temp files
         cleanup_command =  f'rm {log_file_name} {tmp_xml_file}'
@@ -669,7 +720,8 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
                 if db is not None:
                     print(f'checking temperatures before running the scan')
                     hybrid_no = int(module_info[module][0])
-                    temps_and_voltages = read_temps_and_voltages(chip, xmlfile_for_ber, hybrid=hybrid_no) 
+                    hybrid_chip_dict = { hybrid_no : [ chip ] }
+                    temps_and_voltages = read_temps_and_voltages(hybrid_chip_dict, xmlfile_for_ber)[hybrid_no][chip]
                     print(f'the temperatures and voltages are {temps_and_voltages}')
 
                 # execute the OS command
@@ -849,6 +901,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     
+    tuning_db = None if args.test else tdb.TuningDataBase(tuning_dbfile)
     ring_id = args.ring
     mod_for_tuning = args.mod_for_tuning
     prefix_plotfolder = f'{args.prefix}_{ring_id}_'
@@ -877,8 +930,8 @@ if __name__ == '__main__':
         print('Done voltage tuning.')
 
     if args.calibration:
-        run_calibration(ring=ring_id, module=mod_for_tuning, calib='physics')
-        run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive')
+        run_calibration(ring=ring_id, module=mod_for_tuning, calib='physics', db=tuning_db)
+        run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive', db=tuning_db)
         print('Done physics and pixel alive scan.\n\n')
 
         

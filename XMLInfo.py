@@ -132,7 +132,6 @@ class XMLInfo:
                     if int(c.getAttribute('Id')) not in chiplist:
                         m.removeChild(c)
 
-
     def keep_only_chips_by_modulename(self, modulename, chiplist):
         for m in self.document.getElementsByTagName('Hybrid'):
             ch = [n for n in m.childNodes if n.nodeType is minidom.Node.ELEMENT_NODE and n.tagName == 'RD53'][0]
@@ -189,7 +188,19 @@ class XMLInfo:
             if str(m.getAttribute('type')) == 'RD53':
                 m.setAttribute('enable',str(val))
 
+    def get_module_info(self):
+        dct = {}
+        for m in self.document.getElementsByTagName('Hybrid'):
+            chips = [n for n in m.childNodes if n.nodeType is minidom.Node.ELEMENT_NODE and n.tagName == 'RD53']
+            if len(chips) < 1: continue
 
+            mod_name = get_modulename_from_txtfilename(chips[0].getAttribute('configfile') )
+            dct[mod_name] = { 'hybridId' : int(m.getAttribute('Id')) }
+            dct[mod_name]['chips'] = []
+            for c in [ n for n in m.childNodes if n.nodeType is minidom.Node.ELEMENT_NODE and n.tagName == 'RD53']:
+                dct[mod_name]['chips'] += [ int(c.getAttribute('Id')) ]
+        return dct
+            
 
 
 def get_modulename_from_txtfilename(txtfilename):
