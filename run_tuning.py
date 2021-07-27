@@ -443,6 +443,7 @@ def run_calibration(ring, module, calib, db=None):
 
     command = 'CMSITminiDAQ -f %s -c %s' % (os.path.join(xmlfolder, xmlfilename), calib)
     print(command)
+    start_time = datetime.now()
     os.system(command)
 
     if not db is None:
@@ -453,7 +454,8 @@ def run_calibration(ring, module, calib, db=None):
             hybrid_id = mod_info['hybridId']
             for chip in mod_info['chips']:
                 pos = get_module_position(mod, ring)
-                scan_info =  {'ScanIndex': scan_index, 'ScanType': calib, 'Ring': ring, 'Pos': pos, 'RunNumber':run_number, 'Module':mod, 'Chip': chip} 
+                scan_info =  {'ScanIndex': scan_index, 'ScanType': calib, 'Ring': ring, 
+                        'Pos': pos, 'RunNumber':run_number, 'Module':mod, 'Chip': chip, 'start_time':start_time, 'start_time_human':get_human_time(start_time)} 
                 chip_temps_and_voltages = temps_and_voltages[hybrid_id][chip]
                 scan_info.update(chip_temps_and_voltages)
                 all_scan_info += [ scan_info ]
@@ -742,11 +744,10 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
                     other_positions.remove(this_position)
                     run_info.update( {'other_powered_modules': other_positions} ) #storing the array object should be fine
 
-                    run_info.update( {'scan_index': scan_index, 'start_time': start_time, 'end_time': end_time } )
-                    time_format = '%d/%m/%Y %H:%M:%S'
                     tz_info     = start_time.astimezone().strftime('UTC%z')
-                    run_info.update( { 'start_time_human': start_time.strftime(time_format), 
-                                       'end_time_human':end_time.strftime(time_format), 
+                    run_info.update( {'scan_index': scan_index, 'start_time': start_time, 'end_time': end_time } )
+                    run_info.update( { 'start_time_human': get_human_time(start_time), 
+                                       'end_time_human': get_human_time(end_time), 
                                        'time_zone_human':tz_info } 
                                    )
                     run_info.update( temps_and_voltages )
@@ -759,6 +760,9 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
         
 
 
+def get_human_time( the_time):
+    time_format = '%d/%m/%Y %H:%M:%S'
+    return the_time.strftime(time_format)
 
 
 def reset_all_settings():
