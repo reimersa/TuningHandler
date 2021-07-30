@@ -10,7 +10,7 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Print most recent entries in the database')
     parser.add_argument('-n',  dest='nentries', type=int, default=10, 
             help='number of entries to show. [default :%(default)s]')
-    parser.add_argument('--db', dest='database', type=str, default='db/ber.json',
+    parser.add_argument('--db', dest='database', type=str, default='ber_db/ber.json',
             help='database file name to query. [default: %(default)s]')
     parser.add_argument('-H', dest='show_columns', action='store_true', default=False, help='List all columns in database' )
     parser.add_argument('-c', dest='columns', default=None,help='comma separated list of columns to show' )

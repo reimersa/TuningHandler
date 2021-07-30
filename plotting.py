@@ -240,7 +240,7 @@ if __name__=='__main__':
 
     ber_variables = ['TAP0','TAP1','TAP2','Module','Chip']
     parser = argparse.ArgumentParser(description='Print most recent entries in the database')
-    parser.add_argument('--db', dest='database', type=str, default='db/ber.json',
+    parser.add_argument('--db', dest='database', type=str, default='ber_db/ber.json',
             help='database file name to query. [default: %(default)s]')
     parser.add_argument('--scan', dest='scan_number', type=int, default=None, help='scan number to plot. [default: most recent]')
     parser.add_argument('--group-on', dest='group_on', nargs=3, choices=ber_variables, default=['Module','Chip','TAP0'],
