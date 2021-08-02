@@ -11,6 +11,7 @@ daqsettings_per_xmltype = {'scurve': {
                                'nEvtsBurst': '10000',
                                'INJtype': '0',
                                'nClkDelays': '30',
+                               'TargetOcc' : 1e-4,
                                'TargetThr' : '2000',
                                'ThrStart'  : '300',
                                },
