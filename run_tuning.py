@@ -224,7 +224,7 @@ def confirm_settings( modules, chips, ring, positions, n_settings, value, db):
         print('response not understood, please use "y" or "n", not running tuning.')
         return False
 
-def run_threshold_tuning(module, ring, plotfoldername, intermediate_scurves=False):
+def run_threshold_tuning(module, ring, plotfoldername, intermediate_scurves=False, db=None):
     reset_xml_files()
     reset_txt_files()
     
@@ -249,19 +249,19 @@ def run_threshold_tuning(module, ring, plotfoldername, intermediate_scurves=Fals
     print('Reset all VThreshold_LIN to 400.')
     
     reset_xml_files()
-    run_calibration(ring=ring, module=module, calib='pixelalive')
+    run_calibration(ring=ring, module=module, calib='pixelalive',db=db)
     if intermediate_scurves:
         run_calibration(ring=ring, module=module, calib='scurve')
 
-    run_calibration(ring=ring, module=module, calib='threqu')
+    run_calibration(ring=ring, module=module, calib='threqu',db=db)
     if intermediate_scurves:
         run_calibration(ring=ring, module=module, calib='scurve')
 
-    run_calibration(ring=ring, module=module, calib='noise')
+    run_calibration(ring=ring, module=module, calib='noise',db=db)
     if intermediate_scurves:
         run_calibration(ring=ring, module=module, calib='scurve')
 
-    run_calibration(ring=ring, module=module, calib='thradj')
+    run_calibration(ring=ring, module=module, calib='thradj',db=db)
         
         
     thresholds_per_id_and_chip = get_thresholds_from_last()
@@ -273,12 +273,12 @@ def run_threshold_tuning(module, ring, plotfoldername, intermediate_scurves=Fals
     if intermediate_scurves:
         run_calibration(ring=ring, module=module, calib='scurve')
 
-    run_calibration(ring=ring, module=module, calib='threqu')
+    run_calibration(ring=ring, module=module, calib='threqu',db=db)
     if intermediate_scurves:
         run_calibration(ring=ring, module=module, calib='scurve')
 
-    run_calibration(ring=ring, module=module, calib='noise')
-    run_calibration(ring=ring, module=module, calib='scurve')
+    run_calibration(ring=ring, module=module, calib='noise',db=db)
+    run_calibration(ring=ring, module=module, calib='scurve', db=db)
     plot_ph2acf_rootfile(runnr=get_last_runnr(), module_per_id=module_per_id, plotfoldername=plotfoldername)
 
 def get_last_runnr():
@@ -423,8 +423,10 @@ def run_reset(ring, module):
     print(command)
     os.system(command)
     
-def run_calibration(ring, module, calib, db=None):
+def run_calibration(ring, module, calib, logfolder='log/', db=None):
     xmlfilename = get_xmlfile_name(ring=ring, module=module, calib=xmltype_per_calibration[calib])
+    run_number = get_last_runnr()
+    logfilename=os.path.join(logfolder, f'Run{run_number}_{calib}.log')
     if calib == 'physics':
         xml_object = XMLInfo( os.path.join(xmlfolder, xmlfilename) ) 
         tmp_xml_file = f'{xmlfilename}.tmp_for_mon.xml'
@@ -440,15 +442,14 @@ def run_calibration(ring, module, calib, db=None):
             hybrid_chip_dct[info['hybridId']] = info['chips']
         temps_and_voltages = read_temps_and_voltages(hybrid_chip_dct, os.path.join(xmlfolder, xmlfilename) )
 
-
-    command = 'CMSITminiDAQ -f %s -c %s' % (os.path.join(xmlfolder, xmlfilename), calib)
+    xml_full_path = os.path.join(xmlfolder, xmlfilename)
+    command = f'CMSITminiDAQ -f {xml_full_path} -c {calib} | tee {logfilename}' 
     print(command)
     start_time = datetime.now()
     os.system(command)
 
     if not db is None:
         scan_index = db.get_next_index()
-        run_number = get_last_runnr()
         all_scan_info = []
         for mod, mod_info in module_info.items():
             hybrid_id = mod_info['hybridId']
@@ -456,6 +457,8 @@ def run_calibration(ring, module, calib, db=None):
                 pos = get_module_position(mod, ring)
                 scan_info =  {'ScanIndex': scan_index, 'ScanType': calib, 'Ring': ring, 
                         'Pos': pos, 'RunNumber':run_number, 'Module':mod, 'Chip': chip, 'start_time':start_time, 'start_time_human':get_human_time(start_time)} 
+                calib_info = read_calibration_log( chip, logfilename, hybrid=hybrid_id )
+                scan_info.update(calib_info)
                 chip_temps_and_voltages = temps_and_voltages[hybrid_id][chip]
                 scan_info.update(chip_temps_and_voltages)
                 all_scan_info += [ scan_info ]
@@ -633,6 +636,39 @@ def read_monitoring_log(chip, log_file, board=0, optical_group=0, hybrid=0):
 
     return temps_and_voltages
 
+
+def read_calibration_log(chip, log_file, hybrid=0):
+    '''Read the chip temperatures and VDDD/VDDA output values from the log.'''
+
+    expected_chip_id = [ hybrid, chip ]
+    current_chip_id = [-1,-1]
+    calib_info = {}
+    with open( log_file, 'r') as f:
+        lines = None
+        try:
+            lines = f.readlines()
+        except Exception as e:
+            print(f'''Caught an exception while reading monitoring log file {fname}.
+                    temperatures and voltages will be reported as {temps_and_voltages}.
+                    The error was:\n{e}''')
+
+        if lines is not None:    
+
+            for l in lines:
+                if l is None: 
+                    continue
+                l = escape_ansi(l)
+
+                if 'Configuring chip of hybrid:' in l: #Identifying the hybrid
+                    current_chip_id[0] = safe_convert(l.split()[-1], int, 'hybridId')
+
+                elif 'Configuring RD53:' in l: #Identifying the chip
+                    current_chip_id[1] = safe_convert(l.split()[-1], int, 'chipId')
+
+                elif current_chip_id == expected_chip_id and 'Number of masked pixels:' in l: #masked pixels
+                    calib_info['InitMaskedPix'] = safe_convert(l.split()[-1], int, 'maskedPixels')
+
+    return calib_info
 
 
 def get_num_settings( tap_settings ):
@@ -936,11 +972,12 @@ if __name__ == '__main__':
     if args.calibration:
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='physics', db=tuning_db)
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive', db=tuning_db)
+        run_calibration(ring=ring_id, module=mod_for_tuning, calib='scurve', db=tuning_db)
         print('Done physics and pixel alive scan.\n\n')
 
         
     if args.tune_thresholds:
-        run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix, intermediate_scurves =  args.all_scurves)
+        run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix, intermediate_scurves =  args.all_scurves, db=tuning_db)
         print('Done threshold tuning. \n\n')
     
     if args.ber:
