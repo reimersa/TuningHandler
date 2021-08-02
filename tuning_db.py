@@ -104,6 +104,9 @@ class TuningDataBase():
         self._stored_info_df = TuningDataFrame()
         return df_copy
         
+    def overwrite_all(self, df):
+        self._new_info_df = TuningDataFrame( df )
+        self._new_info_df.overwrite( self._fname )
 
     def get_next_index(self):
         #file 'RunNumber.txt' contains number the next run would have, nothing else.
