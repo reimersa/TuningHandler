@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 
 class Persistifier(ABC):
 
@@ -6,4 +6,12 @@ class Persistifier(ABC):
     def update(self, scan_data):
         pass
 
-class 
+class DummyPersistifier(Persistifier):
+
+    def update(self, scan_data):
+        pass
+
+class PrintPersistifier(Persistifier):
+
+    def update(self, scan_data):
+        print(scan_data)

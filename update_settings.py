@@ -1,11 +1,15 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 import json 
 from yaml import safe_load
-imoort ROOT
 
 class ConfigUpdater(ABC):
 
     @abstractmethod
+    def update(self, scan_output):
+        pass
+
+class NothingUpdater(ConfigUpdater):
+    
     def update(self, scan_output):
         pass
 
