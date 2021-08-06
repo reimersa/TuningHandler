@@ -44,3 +44,4 @@ def get_log_runnr( log_filename):
 
 def get_log_scantype( log_filename):
     return os.path.basename(log_filename).rstrip('.log').split('_')[-1]
+

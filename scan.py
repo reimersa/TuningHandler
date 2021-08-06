@@ -68,13 +68,15 @@ class ScanWithMonitoring(CMSITDAQScan):
         mon_kwargs['persistifier'] = l.DummyPersistifier()
         mon_prod = self._make_mon_producer()
         self._mon_scan = CMSITDAQScan(mon_prod, **mon_kwargs)
+        print(self._mon_scan._producer.xml_file)
+        
 
     def _make_mon_producer(self):
         xml_file = self._make_monitoring_xml()
-        _mon_scan = deepcopy(self._producer)
-        _mon_scan.xml = xml_file
-        _mon_scan.scan_type = 'physics'
-        return _mon_scan
+        _mon_prod = deepcopy(self._producer)
+        _mon_prod.xml_file  = xml_file
+        _mon_prod.scan_type = 'physics'
+        return _mon_prod
 
     def _make_monitoring_xml(self):
         orig_xml = self._producer.xml_file

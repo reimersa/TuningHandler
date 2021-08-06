@@ -62,4 +62,6 @@ class LastLogProducer(CMSITDAQProducer):
         if len(log_files) > 0:
             return log_files[-1]
         else:
-            return ''
+            dummy_log = os.path.join(self._log_dir,'dummy_log_file.log')
+            touch(dummy_log)
+            return dummy_log

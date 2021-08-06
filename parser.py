@@ -34,7 +34,8 @@ class LogFileParser(Parser):
                     for getter in self._getters:
                         getter.read_line(l)
 
-        self._info[getter.name] = getter.get(None)
+        for getter in self._getters:
+            self._info[getter.name] = getter.get(None)
         return self._info
 
 

@@ -19,7 +19,6 @@ class ThresholdUpdater(ConfigUpdater):
     def __init__(self, json_filename):
         self._json = json_filename
 
-
     def update(self, thresholds):
         settings = self.get_chipsettings_from_json()
         for chip in thresholds.keys():
