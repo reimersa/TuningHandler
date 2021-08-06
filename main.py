@@ -132,11 +132,11 @@ class ScanWithMonitoring(CMSITDAQScan):
 
 if __name__ == '__main__':
 
-    producer = CMSITDAQProducer('pixelalive','xmlCMSIT_diskR3_scurve.xml','log/')
-    parsers = [p.Parser([p.RunNumberGetter('RunNumber')]), p.LogFileParser([p.InitMaskedPixGetter('MaskedPixels')]) ]
+    producer = LastLogProducer('physics','xmlCMSIT_diskR3_scurve.xml','log/')
+    parsers = [p.Parser([p.RunNumberGetter('RunNumber'),p.ScanTypeGetter('ScanType')]), p.LogFileParser([p.InitMaskedPixGetter('MaskedPixels')]) ]
     mon_parsers = [ p.LogFileParser([p.VoltageGetter('Voltages'),p.TemperatureGetter('Temps') ]) ]
     updater = s.NothingUpdater()
     persistifier = l.PrintPersistifier()
     
-    my_scan = ScanWithMonitoring(producer,mon_parsers=mon_parsers, parsers=parsers, persistifier=l.PrintPersistifier() )
+    my_scan = CMSITDAQScan(producer, parsers=parsers, persistifier=l.PrintPersistifier() )
     my_scan.run_all()

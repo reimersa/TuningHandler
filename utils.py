@@ -1,4 +1,5 @@
 import re
+import os
 
 def escape_ansi(line):
     ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
@@ -35,5 +36,11 @@ def safe_convert( str_value, to_type, value_name):
     return converted
 
 
-def get_log_name(self, scan_type, runnr):
-    return os.path.join(self._log_dir, f'Run{runnr}_{scan_type}.log'
+def get_log_name(log_dir, runnr, scan_type):
+    return os.path.join(log_dir, f'Run{runnr}_{scan_type}.log')
+
+def get_log_runnr( log_filename):
+    return os.path.basename(log_filename).lstrip('Run').split('_')[0]
+
+def get_log_scantype( log_filename):
+    return os.path.basename(log_filename).rstrip('.log').split('_')[-1]

@@ -63,10 +63,16 @@ class LogFileGetter(InfoGetter):
         pass
     
 class RunNumberGetter(InfoGetter):
-    """Get the last RunNumber."""
+    """Get the RunNumber from the name of a log file."""
     
-    def get(self, data):
-        return uu.get_last_runnr()
+    def get(self, log_filename):
+        return uu.get_log_runnr(log_filename)
+
+class ScanTypeGetter(InfoGetter):
+    """Get the ScanType from the name of a log file."""
+
+    def get(self, log_filename):
+        return uu.get_log_scantype( log_filename )
 
 class BERGetter(LogFileGetter):
     """Get Number of Bit Errors from a BER test Log File."""
