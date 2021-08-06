@@ -33,3 +33,7 @@ def safe_convert( str_value, to_type, value_name):
                 This may cause loss of data for this scan point. The original error was:\n{e}.''')
        
     return converted
+
+
+def get_log_name(self, scan_type, runnr):
+    return os.path.join(self._log_dir, f'Run{runnr}_{scan_type}.log'

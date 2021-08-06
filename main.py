@@ -5,6 +5,7 @@ import parser as p
 import logging as l
 import update_settings as s
 import utils as uu
+import glob
 from XMLInfo import *
         
 def run_scan( executer, parsers, updater, persistifier):
@@ -16,12 +17,14 @@ def run_scan( executer, parsers, updater, persistifier):
     updater.update( scan_output )
     persistifier.update( parsed_data )
 
+
 class Producer(ABC):
     """Abstract class which produces some data"""
 
     @abstractmethod
     def get_data(self):
         pass
+
 
 class CMSITDAQProducer(Producer):
     """Class for running CMSITDAQ scans, with terminal output saved to a log and returned."""
@@ -32,25 +35,22 @@ class CMSITDAQProducer(Producer):
         self._log_folder = log_folder
 
     def get_data(self):
-        log_file = os.path.join(self._log_folder,f'Run{uu.get_next_runnr()}_{self._type}.log')
+        log_file = uu.get_log_name(self._log_folder, uu.get_next_runnr(), self._type)
         cmd = f'CMSITminiDAQ -f {self._xml_file} -c {self._type}'
         log_cmd = f'| tee {log_file}'
         os.system(f'{cmd} {log_cmd}')
         return log_file
 
-    def get_log_file(self, runnr=None):
-        if runnr is None:
-            runnr = uu.get_next_runnr()
-        return os.path.join(self._log_folder,f'Run{uu.get_next_runnr()}_{self._type}.log')
-    
-
 class LastLogProducer(CMSITDAQProducer):
     """WIP: Class for Retrieving scan Log without actually running the scan"""
 
     def get_data(self):
-        log_file = os.path.join('log','example_ber_R7_mod987654321_chip12_pos200_2000_1800_90000.log')
-        return log_file
-
+        log_files = glob.glob( uu.get_log_name(self._log_folder, '*', self._type) )
+        log_files.sort()
+        if len(log_files) > 0:
+            return log_files[0]
+        else:
+            return ''
 
 class Scan(ABC):
     
