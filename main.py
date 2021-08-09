@@ -7,18 +7,22 @@ import update_settings as s
 import scan as rc
 
 import utils as uu
+
+import xml_config as xc
+#from XMLInfo import xmlInfo
         
 if __name__ == '__main__':
 
     ring = 'R3'
     scan_type = 'pixelalive'
-    hw_config  = HWConfigJSON('settings/hw_settings.json', ring)
-    scan_config = ScanConfig('settings/scan_settings.json', scan_type)
-    chip_config = ChipConfig('settings/chip_settings.json')
+    hw_config  = xc.HWConfigJSON('settings/hw_settings.json', ring)
+    scan_config = xc.ScanConfig('settings/scan_settings.json', scan_type)
+    chip_config = xc.ChipConfig('settings/chip_settings.json')
 
-    xml_config = XMLConfig(HWConfig, ScanConfig, ChipConfig)
+    xml_config = xc.XMLConfigMaker(hw_config, scan_config, chip_config)
+    xml_config.save()
 
-    producer = prod.LastLogProducer(scan_type, xml_config, 'log/')
+    producer = prod.LastLogProducer(scan_type, xml_config.get_xml_filename(), 'log/')
     parsers = [p.Parser([p.RunNumberGetter('RunNumber'),p.ScanTypeGetter('ScanType')]), p.LogFileParser([p.InitMaskedPixGetter('MaskedPixels')]) ]
     mon_parsers = [ p.LogFileParser([p.VoltageGetter('Voltages'), p.TemperatureGetter('Temps') ]) ]
     updater = s.NothingUpdater()

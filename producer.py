@@ -63,5 +63,6 @@ class LastLogProducer(CMSITDAQProducer):
             return log_files[-1]
         else:
             dummy_log = os.path.join(self._log_dir,'dummy_log_file.log')
-            touch(dummy_log)
+            cmd = f'touch {dummy_log}'
+            os.system(cmd)
             return dummy_log
