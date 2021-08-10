@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 import parser as p
 import logging as  l
 import update_settings as s
+
+import utils as uu
 from XMLInfo import *
 
 class Scan(ABC):
@@ -43,11 +45,13 @@ class CMSITDAQScan(RunUpdateSaveScan):
     def run_simple(self):
         return self._producer.get_data()
 
-    def run(self):
+    def run(self, flatten=True):
         log_file = self.run_simple()
         parsed_info = {}
         for parser in self._parsers:
             parsed_info.update( parser.parse(log_file) )
+        if flatten:
+            parsed_info = uu.flatten_dict_per_chip( parsed_info)
         return parsed_info
 
     def save_info(self, info):
@@ -87,8 +91,9 @@ class ScanWithMonitoring(CMSITDAQScan):
         return tmp_xml_file
 
     def run(self):
-        info = self._mon_scan.run()
-        main_info = super().run()
+        info = self._mon_scan.run(flatten=False)
+        main_info = super().run(flatten=False)
         info.update(main_info)
-        return info
+        parsed_info = uu.flatten_dict_per_chip( info)
+        return parsed_info
 

@@ -45,3 +45,50 @@ def get_log_runnr( log_filename):
 def get_log_scantype( log_filename):
     return os.path.basename(log_filename).rstrip('.log').split('_')[-1]
 
+
+def flatten_dict_per_chip( dct ):
+
+    print(f'flattening: {dct}')
+    global_data = {}
+    chip_data = {}
+    for key, val in dct.items():
+        if not is_chip_data(val):
+            global_data[key] = val
+        else:
+            for chipId, chip_info in val.items():
+                if not chipId in chip_data:
+                    chip_entry = get_chip_info( chipId )
+                    chip_data[chipId] = chip_entry
+                if isinstance(chip_info, dict):
+                    chip_data[chipId].update( chip_info ) 
+                else:
+                    chip_data[chipId][key] = chip_info
+
+    per_chip_entries = []
+    for chipId, all_chip_info in chip_data.items():
+        entry = all_chip_info
+        entry.update(global_data)
+        per_chip_entries.append(entry)
+
+    return per_chip_entries
+
+def is_chip_data( val ):
+    """should be a dictionary with chipIds as the keys, the chipId is stored as a tuple with 4 entries"""
+    is_chip = False
+    if not isinstance(val, dict):
+        return
+    else:
+        for key in val.keys():
+            if not isinstance(key, tuple):
+                return
+            elif not len(key) == 4:
+                return
+    return True
+            
+def get_chip_info( chipId):
+    dct = {'chip': chipId[0],
+           'hybrid': chipId[1],
+           'board' : chipId[2],
+           'optical_group': chipId[3]} 
+    return dct
+        

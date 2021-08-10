@@ -146,14 +146,17 @@ class HWConfigJSON(HWConfig):
     def get_active_ports(self):
         ports = []
         for module in self.get_active_modules():
-            ports.append( self.get_port_by_module( module ) )
+            if self.get_port_by_module(module) is not None:
+                ports.append( self.get_port_by_module( module ) )
         return ports
 
     def get_active_modules(self):
         return list( self._modules.keys() )
 
     def get_port_by_module(self, module):
-        return self._modules[module]['port']
+        position = self.get_position_by_module( module )
+        port = self._positions[position]["port"]
+        return 
 
     def get_all_positions(self):
         return list( self._positions.keys() )

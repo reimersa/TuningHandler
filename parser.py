@@ -170,6 +170,7 @@ class InitMaskedPixGetter(ChipSpecificLogFileGetter):
                 self._value[self._chipId] = uu.safe_convert(l.split()[-1], int, 'maskedPixels')
 
 class MonitorLogGetter(ChipSpecificLogFileGetter):
+    """Abstract class for retriving chip-specific monitoring data (e.g. temperatures or voltages)."""
 
     def check_for_chip_id( self, l):
         if 'Monitor data for' in l: #Identifying the chip

@@ -1,12 +1,12 @@
 { "R3": {
     "modules": { 
         "modT09": {
-            "position":"R31",
-            "port" : 1,
+            "position":"R35",
             "chips": [3]
         }
     },
-    "positions": { "R31":{"lanes":[-1,-1,-1,0] } },
+    "positions": { "R35":{ "port" : 1, "lanes":[-1,-1,-1,0] },
+                   "R31":{ "port" : 3, "lanes":[-1,-1,-1,0] } },
     "ports":[1,2,3,4,5,6,7]
     }   
     
