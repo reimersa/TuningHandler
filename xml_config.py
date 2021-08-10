@@ -4,6 +4,7 @@ import os
 from yaml import safe_load
 
 from XMLInfo import XMLInfo
+import hw_config as hwc
 
 class XMLConfigMaker:
 
@@ -136,7 +137,7 @@ class HWConfigJSON(HWConfig):
             dct = safe_load(f)
         self._ports = dct[name]["ports"]
         self._ring_name = name
-        self._modules = dct[name]['modules']
+        self._modules = { mod_name: hwc.ModuleConfig(**mod_info) for mod_name, mod_info in dct[name]['modules'].items() }
         self._positions = dct[name]['positions']
         self._is_consistent()
 
@@ -151,12 +152,15 @@ class HWConfigJSON(HWConfig):
         return ports
 
     def get_active_modules(self):
-        return list( self._modules.keys() )
+        active_modules = [ ]
+        for modname, mod in self._modules.items():
+            if mod.get_port() is not None:
+                active_modules.append(modname)
+        return active_modules
 
     def get_port_by_module(self, module):
-        position = self.get_position_by_module( module )
-        port = self._positions[position]["port"]
-        return 
+        port = self._modules[module].get_port()
+        return port
 
     def get_all_positions(self):
         return list( self._positions.keys() )
@@ -168,11 +172,11 @@ class HWConfigJSON(HWConfig):
         return positions
 
     def get_position_by_module(self, module):
-        return self._modules[module]['position']
+        return self._modules[module].get_position()
 
 
     def get_active_chips(self, module):
-        return self._modules[module]['chips']
+        return self._modules[module].get_chips()
 
     def get_lane_by_module(self, module, chip):
         position = self.get_position_by_module( module )
@@ -236,4 +240,3 @@ class ChipConfig(JSONConfig):
     def text_dir(self):
         return self._text_dir
 
-        

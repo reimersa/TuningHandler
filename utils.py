@@ -48,7 +48,6 @@ def get_log_scantype( log_filename):
 
 def flatten_dict_per_chip( dct ):
 
-    print(f'flattening: {dct}')
     global_data = {}
     chip_data = {}
     for key, val in dct.items():
