@@ -84,8 +84,8 @@ positions_per_module_R3 = {
 
 
 ids_and_chips_per_module_SAB = {
-    'mod7': (1, [3])
-    #'modT14': (1, [1, 2, 3])
+    #'mod7': (1, [3])
+    'modT14': (1, [1, 2, 3])
 }
         
 #A dictionary of different scans with settings which are (TAP0 list, TAP1 list, TAP2 list).
@@ -880,6 +880,8 @@ if __name__ == '__main__':
     parser.add_argument('--program',      dest='program',        action='store_true', default=False, help='run programming (CMSIT -p). [default: %(default)s]')
     parser.add_argument('--calibration',  dest='calibration',    action='store_true', default=False, help='run calibrations (physics and pixelalive). [default: %(default)s]')
     parser.add_argument('--vtuning',  dest='vtuning',    action='store_true', default=False, help='tune VDDD/A [default: %(default)s]')
+    parser.add_argument('--scurve',  dest='scurve',    action='store_true', default=False, help='run a single scurve scan. [default: %(default)s]')
+    parser.add_argument('--pixelalive',  dest='pixelalive',    action='store_true', default=False, help='run a single pixelalive scan. [default: %(default)s]')
     parser.add_argument('--thresholds',   dest='tune_thresholds', action='store_true', default=False, help='run threshold tuning. [default: %(default)s]')
     parser.add_argument('--all-scurves',  action='store_true', default=False, help='For threshold tuning: Run S-curves at all intermediate steps. [default: %(default)s]')
     parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R3',help='Ring (or SAB) to run run the test on')
@@ -921,6 +923,14 @@ if __name__ == '__main__':
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive', db=tuning_db)
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='scurve', db=tuning_db)
         print('Done physics and pixel alive scan.\n\n')
+
+    if args.scurve:
+        run_calibration(ring=ring_id, module=mod_for_tuning, calib='scurve', db=tuning_db)
+        print('Done scurve scan.\n\n')
+
+    if args.pixelalive:
+        run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive', db=tuning_db)
+        print('Done scurve scan.\n\n')
 
         
     if args.tune_thresholds:
