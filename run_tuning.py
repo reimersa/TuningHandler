@@ -372,7 +372,8 @@ def run_reset(ring, module):
     
 def run_calibration(ring, module, calib, logfolder='log/', db=None):
     xmlfilename = get_xmlfile_name(ring=ring, module=module, calib=xmltype_per_calibration[calib])
-    run_number = get_last_runnr()
+    run_number = get_last_runnr() + 1
+    print(run_number)
     logfilename=os.path.join(logfolder, f'Run{run_number}_{calib}.log')
     if calib == 'physics':
         xml_object = XMLInfo( os.path.join(xmlfolder, xmlfilename) ) 
@@ -388,6 +389,7 @@ def run_calibration(ring, module, calib, logfolder='log/', db=None):
         for mod, info in module_info.items():
             hybrid_chip_dct[info['hybridId']] = info['chips']
         temps_and_voltages = read_temps_and_voltages(hybrid_chip_dct, os.path.join(xmlfolder, xmlfilename) )
+        run_number += 1 # will run a scan in the line above, so the number we read in the beginning is now wrong
 
     xml_full_path = os.path.join(xmlfolder, xmlfilename)
     command = f'CMSITminiDAQ -f {xml_full_path} -c {calib} | tee {logfilename}' 
@@ -409,6 +411,7 @@ def run_calibration(ring, module, calib, logfolder='log/', db=None):
                 chip_temps_and_voltages = temps_and_voltages[hybrid_id][chip]
                 scan_info.update(chip_temps_and_voltages)
                 all_scan_info += [ scan_info ]
+                print(all_scan_info)
         db.add_data( all_scan_info )
         db.update()
 
