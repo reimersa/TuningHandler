@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import ROOT
+
 import seaborn as sns
 import pandas as pd
 import numpy as np
@@ -9,6 +11,9 @@ from matplotlib.colors import LogNorm
 import tuning_db as tdb
 import os
 import argparse
+import glob
+
+from run_tuning import ensureDirectory
 
 def plot_all_ber_from_scan(  db, scan_index, plotdir='plots/', 
                                 group_on = ['Module','Chip','TAP0'], cmap = sns.cm.rocket_r, grid=[None, None]):
@@ -236,6 +241,58 @@ def clean_data(df, ring, min_frames=1e11):
     new_df = new_df[ new_df['NBER'] < 10e6 ]
     return new_df
 
+def plot_scurve_results(runnr, module_per_id, plotfoldername='plots/thresholds/', tag=''):
+    ROOT.gROOT.SetBatch(True)
+    
+    runnrstr = '%06i' % runnr
+    infilepattern = 'Results/Run%s_*.root' % runnrstr
+    
+    matches = glob.glob(infilepattern)
+    if len(matches) > 1:
+        raise ValueError('Trying to plot histograms in rootfile for runnr. %i, but there is more than one file found with the pattern \'Run%s_*.root\': '% (runnrstr) + matches )
+    infilename = matches[0]
+    
+    infile = ROOT.TFile(infilename, 'READ')
+    foldername = 'Detector/Board_0/OpticalGroup_0/'
+    infile.cd(foldername)
+    dir = ROOT.gDirectory
+    iter = ROOT.TIter(dir.GetListOfKeys())
+    modules = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
+    
+    for module in modules:
+        histpath = foldername + module
+        moduleid = int(module.replace('Hybrid_', ''))
+        #modulename = module_per_id[moduleid]
+        infile.cd()
+        infile.cd(histpath)
+        chips = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
+        
+        for chip in chips:
+            chip_dummy = chip
+            fullhistpath = os.path.join(histpath, chip)
+            infile.cd()
+            infile.cd(fullhistpath)
+            
+            canvases = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
+            infile.cd()
+            for canvasname in canvases:
+                if canvasname == 'Channel': continue
+                canvas = infile.Get(os.path.join(fullhistpath, canvasname))
+                hist   = canvas.GetPrimitive(canvasname)
+                canvastitle = canvasname.split('_')[4] + '_' + chip
+                outcanvas = ROOT.TCanvas('c', canvastitle, 500, 500)
+                if 'SCurves' in canvastitle:
+                    ROOT.gPad.SetLogz()
+                hist.Draw('colz')
+                ROOT.gStyle.SetOptStat(0);
+                outdir = os.path.join(plotfoldername, '')
+                outfilename = canvastitle  + tag + '_' + runnrstr + '.pdf'
+                #outfilename = outfilename.replace('Chip_', '%s_chip' % (modulename))
+                ensureDirectory(outdir)
+                outcanvas.SaveAs(outdir + outfilename)
+                outcanvas.SaveAs(outdir + outfilename.replace('pdf', 'png'))
+    del infile
+    
 if __name__=='__main__':
 
     ber_variables = ['TAP0','TAP1','TAP2','Module','Chip']

@@ -279,7 +279,7 @@ def run_threshold_tuning(module, ring, plotfoldername, intermediate_scurves=Fals
 
     run_calibration(ring=ring, module=module, calib='noise',db=db)
     run_calibration(ring=ring, module=module, calib='scurve', db=db)
-    plot_ph2acf_rootfile(runnr=get_last_runnr(), module_per_id=module_per_id, plotfoldername=plotfoldername)
+    pl.plot_scurve_results(runnr=get_last_runnr(), module_per_id=module_per_id, plotfoldername=plotfoldername)
 
 def get_last_runnr():
     #file 'RunNumber.txt' contains number the next run would have, nothing else.
@@ -357,59 +357,6 @@ def get_chipsettings_from_json():
     
 
 
-def plot_ph2acf_rootfile(runnr, module_per_id, plotfoldername, tag=''):
-    ROOT.gROOT.SetBatch(True)
-    
-    runnrstr = '%06i' % runnr
-    infilepattern = 'Results/Run%s_*.root' % runnrstr
-    
-    matches = glob.glob(infilepattern)
-    if len(matches) > 1:
-        raise ValueError('Trying to plot histograms in rootfile for runnr. %i, but there is more than one file found with the pattern \'Run%s_*.root\': '% (runnrstr) + matches )
-    infilename = matches[0]
-    
-    infile = TFile(infilename, 'READ')
-    foldername = 'Detector/Board_0/OpticalGroup_0/'
-    infile.cd(foldername)
-    dir = ROOT.gDirectory
-    iter = TIter(dir.GetListOfKeys())
-    modules = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
-    
-    for module in modules:
-        histpath = foldername + module
-        moduleid = int(module.replace('Hybrid_', ''))
-        modulename = module_per_id[moduleid]
-        infile.cd()
-        infile.cd(histpath)
-        chips = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
-        
-        for chip in chips:
-            chip_dummy = chip
-            fullhistpath = os.path.join(histpath, chip)
-            infile.cd()
-            infile.cd(fullhistpath)
-            
-            canvases = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
-            infile.cd()
-            for canvasname in canvases:
-                if canvasname == 'Channel': continue
-                canvas = infile.Get(os.path.join(fullhistpath, canvasname))
-                hist   = canvas.GetPrimitive(canvasname)
-                canvastitle = canvasname.split('_')[4] + '_' + chip
-                outcanvas = TCanvas('c', canvastitle, 500, 500)
-                if 'SCurves' in canvastitle:
-                    ROOT.gPad.SetLogz()
-                hist.Draw('colz')
-                ROOT.gStyle.SetOptStat(0);
-                outdir = os.path.join('plots', 'thresholds', plotfoldername, '')
-                outfilename = canvastitle  + tag + '_' + runnrstr + '.pdf'
-                outfilename = outfilename.replace('Chip_', '%s_chip' % (modulename))
-                ensureDirectory(outdir)
-                outcanvas.SaveAs(outdir + outfilename)
-                outcanvas.SaveAs(outdir + outfilename.replace('pdf', 'png'))
-    del infile
-    
-
 
 def run_programming(ring, module):
     xmlfilename = get_xmlfile_name(ring=ring, module=module, calib='scurve')
@@ -456,7 +403,7 @@ def run_calibration(ring, module, calib, logfolder='log/', db=None):
             for chip in mod_info['chips']:
                 pos = get_module_position(mod, ring)
                 scan_info =  {'ScanIndex': scan_index, 'ScanType': calib, 'Ring': ring, 
-                        'Pos': pos, 'RunNumber':run_number, 'Module':mod, 'Chip': chip, 'start_time':start_time, 'start_time_human':get_human_time(start_time)} 
+                        'Pos': pos, 'RunNumber':run_number, 'Module':mod, 'Chip': chip, 'start_time':start_time, 'start_time_human':get_human_time(start_time), 'IsArchived':False} 
                 calib_info = read_calibration_log( chip, logfilename, hybrid=hybrid_id )
                 scan_info.update(calib_info)
                 chip_temps_and_voltages = temps_and_voltages[hybrid_id][chip]

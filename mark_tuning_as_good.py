@@ -6,11 +6,57 @@ import shutil
 import re
 import argparse
 
+import plotting as pl
 
-def mark_runs_as_good_in_db( db_file, run_numbers, mark_bad=False ):
+
+class RunAlreadyHasANameException(Exception):
+    pass
+
+class RunDoesntExist(Exception):
+    pass
+
+
+def check_runs_in_df(run_numbers, df):
+
+    all_runs = df['RunNumber'].unique()
+    for run in run_numbers:
+        if run in all_runs:
+            continue
+        else:
+            raise RunDoesntExist(f'Run {run} is not in the list of runnumbers in the database!')
+
+def remove_names( db_file, run_numbers):
 
     db = tdb.TuningDataBase(db_file)    
     df = db.get_info()
+    check_runs_in_df(run_numbers, df)
+
+    row_spec = df['RunNumber'].isin(run_numbers)
+    print(f'Removing names from runs {run_numbers}')
+    print(f'their current names are {df[row_spec][["RunNumber","Name"]]}')
+    df.loc[ df['RunNumber'].isin(run_numbers), 'Name'] = None
+    db.overwrite_all( df )
+
+def update_name( db_file, run_numbers, name):
+
+    print(f'Naming runs {run_numbers} as "{name}"')
+    db = tdb.TuningDataBase(db_file)    
+    df = db.get_info()
+
+    check_runs_in_df(run_numbers, df)
+    row_spec = df['RunNumber'].isin(run_numbers)
+    has_name = df[ row_spec ]['Name'].notnull().any()
+    if has_name:
+        raise RunAlreadyHasANameException(f'''Could not name all the runs, because some of them already
+        have names. The runs selected runs/names are: \n {df[row_spec][["RunNumber","Name"]]}.''')
+    df.loc[ df['RunNumber'].isin(run_numbers), 'Name'] = name
+    db.overwrite_all( df )
+
+def mark_runs_as_good_in_db( db_file, run_numbers, mark_bad=False):
+
+    db = tdb.TuningDataBase(db_file)    
+    df = db.get_info()
+    check_runs_in_df(run_numbers, df)
     if 'IsArchived' in df.columns:
         if mark_bad:
             df['IsArchived'] = df['IsArchived'] & ( ~df['RunNumber'].isin(run_numbers) )
@@ -52,12 +98,12 @@ class Archive():
         for f in files:
            shutil.copy(f, self.results_dir(run) ) 
 
-    def store_plots(self, run, files):
-        for f in files:
-            shutil.copy(f, self.plot_dir(run) )
+    #def store_plots(self, run, files):
+    #    for f in files:
+    #        shutil.copy(f, self.plot_dir(run) )
 
 
-def archive_info( archive_dir, results_dir, plots_dir, run_numbers):
+def archive_info( archive_dir, results_dir, run_numbers):
     archive = Archive(archive_dir)
     for run_number in run_numbers:
         archive.make_run_dir(run_number)
@@ -65,8 +111,7 @@ def archive_info( archive_dir, results_dir, plots_dir, run_numbers):
         results_files = get_result_files(run_number, results_dir )
         archive.store_results(run_number, results_files)
 
-        plot_files    = get_plot_files( run_number, plots_dir )
-        archive.store_plots(run_number, plot_files)
+        make_plots( run_number, archive.plot_dir(run_number)  )
 
 def get_result_files( run, results_dir):
     all_files = os.listdir(results_dir)
@@ -74,8 +119,9 @@ def get_result_files( run, results_dir):
     full_paths = [ os.path.join(results_dir, f) for f in run_files ]
     return full_paths
 
-def get_plot_files( run, plots_dir):
-    return []
+def make_plots( run, output_dir):
+    pl.plot_scurve_results(run,module_per_id='dummy',plotfoldername=output_dir)
+
         
     
 if __name__=='__main__':
@@ -86,10 +132,18 @@ if __name__=='__main__':
     parser.add_argument('--results',dest='results_dir', default='Results/', help='Directory with results files to archive. [default: %(default)s]')
     parser.add_argument('--archive',dest='archive_dir', default='archive/', help='Directory for archiving relevant files. [default: %(default)s]')
     parser.add_argument('--runs', dest='run_numbers', nargs='+', type=int, help='Space separated list of run numbers to mark as good.')
+    parser.add_argument('--name', default=None, help="Mark these runs as bad instead of as good. [default: %(default)s]")
+    parser.add_argument('--unname', action="store_true",default=False, help="Mark these runs as bad instead of as good. [default: %(default)s]")
     parser.add_argument('--bad', action="store_true", default=False, help="Mark these runs as bad instead of as good. [default: %(default)s]")
     
     args = parser.parse_args()
     db_fname = args.database
 
-    archive_info( args.archive_dir, args.results_dir, args.plot_dir, args.run_numbers )
-    mark_runs_as_good_in_db( args.database, args.run_numbers, mark_bad=args.bad)
+    if args.unname:
+        remove_names(args.database, args.run_numbers)
+    elif not args.name is None:
+        update_name(args.database, args.run_numbers, args.name)
+    else:
+        mark_runs_as_good_in_db( args.database, args.run_numbers, mark_bad=args.bad)
+        if not args.bad:
+            archive_info( args.archive_dir, args.results_dir, args.run_numbers )
