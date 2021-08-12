@@ -84,8 +84,8 @@ positions_per_module_R3 = {
 
 
 ids_and_chips_per_module_SAB = {
-    'mod7': (1, [3])
-    #'modT14': (1, [1, 2, 3])
+    #'mod7': (1, [3])
+    'modT14': (1, [1, 2, 3])
 }
         
 #A dictionary of different scans with settings which are (TAP0 list, TAP1 list, TAP2 list).
@@ -279,7 +279,7 @@ def run_threshold_tuning(module, ring, plotfoldername, intermediate_scurves=Fals
 
     run_calibration(ring=ring, module=module, calib='noise',db=db)
     run_calibration(ring=ring, module=module, calib='scurve', db=db)
-    plot_ph2acf_rootfile(runnr=get_last_runnr(), module_per_id=module_per_id, plotfoldername=plotfoldername)
+    pl.plot_scurve_results(runnr=get_last_runnr(), module_per_id=module_per_id, plotfoldername=plotfoldername)
 
 def get_last_runnr():
     #file 'RunNumber.txt' contains number the next run would have, nothing else.
@@ -357,59 +357,6 @@ def get_chipsettings_from_json():
     
 
 
-def plot_ph2acf_rootfile(runnr, module_per_id, plotfoldername, tag=''):
-    ROOT.gROOT.SetBatch(True)
-    
-    runnrstr = '%06i' % runnr
-    infilepattern = 'Results/Run%s_*.root' % runnrstr
-    
-    matches = glob.glob(infilepattern)
-    if len(matches) > 1:
-        raise ValueError('Trying to plot histograms in rootfile for runnr. %i, but there is more than one file found with the pattern \'Run%s_*.root\': '% (runnrstr) + matches )
-    infilename = matches[0]
-    
-    infile = TFile(infilename, 'READ')
-    foldername = 'Detector/Board_0/OpticalGroup_0/'
-    infile.cd(foldername)
-    dir = ROOT.gDirectory
-    iter = TIter(dir.GetListOfKeys())
-    modules = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
-    
-    for module in modules:
-        histpath = foldername + module
-        moduleid = int(module.replace('Hybrid_', ''))
-        modulename = module_per_id[moduleid]
-        infile.cd()
-        infile.cd(histpath)
-        chips = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
-        
-        for chip in chips:
-            chip_dummy = chip
-            fullhistpath = os.path.join(histpath, chip)
-            infile.cd()
-            infile.cd(fullhistpath)
-            
-            canvases = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
-            infile.cd()
-            for canvasname in canvases:
-                if canvasname == 'Channel': continue
-                canvas = infile.Get(os.path.join(fullhistpath, canvasname))
-                hist   = canvas.GetPrimitive(canvasname)
-                canvastitle = canvasname.split('_')[4] + '_' + chip
-                outcanvas = TCanvas('c', canvastitle, 500, 500)
-                if 'SCurves' in canvastitle:
-                    ROOT.gPad.SetLogz()
-                hist.Draw('colz')
-                ROOT.gStyle.SetOptStat(0);
-                outdir = os.path.join('plots', 'thresholds', plotfoldername, '')
-                outfilename = canvastitle  + tag + '_' + runnrstr + '.pdf'
-                outfilename = outfilename.replace('Chip_', '%s_chip' % (modulename))
-                ensureDirectory(outdir)
-                outcanvas.SaveAs(outdir + outfilename)
-                outcanvas.SaveAs(outdir + outfilename.replace('pdf', 'png'))
-    del infile
-    
-
 
 def run_programming(ring, module):
     xmlfilename = get_xmlfile_name(ring=ring, module=module, calib='scurve')
@@ -425,7 +372,8 @@ def run_reset(ring, module):
     
 def run_calibration(ring, module, calib, logfolder='log/', db=None):
     xmlfilename = get_xmlfile_name(ring=ring, module=module, calib=xmltype_per_calibration[calib])
-    run_number = get_last_runnr()
+    run_number = get_last_runnr() + 1
+    print(run_number)
     logfilename=os.path.join(logfolder, f'Run{run_number}_{calib}.log')
     if calib == 'physics':
         xml_object = XMLInfo( os.path.join(xmlfolder, xmlfilename) ) 
@@ -441,6 +389,7 @@ def run_calibration(ring, module, calib, logfolder='log/', db=None):
         for mod, info in module_info.items():
             hybrid_chip_dct[info['hybridId']] = info['chips']
         temps_and_voltages = read_temps_and_voltages(hybrid_chip_dct, os.path.join(xmlfolder, xmlfilename) )
+        run_number += 1 # will run a scan in the line above, so the number we read in the beginning is now wrong
 
     xml_full_path = os.path.join(xmlfolder, xmlfilename)
     command = f'CMSITminiDAQ -f {xml_full_path} -c {calib} | tee {logfilename}' 
@@ -456,12 +405,13 @@ def run_calibration(ring, module, calib, logfolder='log/', db=None):
             for chip in mod_info['chips']:
                 pos = get_module_position(mod, ring)
                 scan_info =  {'ScanIndex': scan_index, 'ScanType': calib, 'Ring': ring, 
-                        'Pos': pos, 'RunNumber':run_number, 'Module':mod, 'Chip': chip, 'start_time':start_time, 'start_time_human':get_human_time(start_time)} 
+                        'Pos': pos, 'RunNumber':run_number, 'Module':mod, 'Chip': chip, 'start_time':start_time, 'start_time_human':get_human_time(start_time), 'IsArchived':False} 
                 calib_info = read_calibration_log( chip, logfilename, hybrid=hybrid_id )
                 scan_info.update(calib_info)
                 chip_temps_and_voltages = temps_and_voltages[hybrid_id][chip]
                 scan_info.update(chip_temps_and_voltages)
                 all_scan_info += [ scan_info ]
+                print(all_scan_info)
         db.add_data( all_scan_info )
         db.update()
 
@@ -933,6 +883,8 @@ if __name__ == '__main__':
     parser.add_argument('--program',      dest='program',        action='store_true', default=False, help='run programming (CMSIT -p). [default: %(default)s]')
     parser.add_argument('--calibration',  dest='calibration',    action='store_true', default=False, help='run calibrations (physics and pixelalive). [default: %(default)s]')
     parser.add_argument('--vtuning',  dest='vtuning',    action='store_true', default=False, help='tune VDDD/A [default: %(default)s]')
+    parser.add_argument('--scurve',  dest='scurve',    action='store_true', default=False, help='run a single scurve scan. [default: %(default)s]')
+    parser.add_argument('--pixelalive',  dest='pixelalive',    action='store_true', default=False, help='run a single pixelalive scan. [default: %(default)s]')
     parser.add_argument('--thresholds',   dest='tune_thresholds', action='store_true', default=False, help='run threshold tuning. [default: %(default)s]')
     parser.add_argument('--all-scurves',  action='store_true', default=False, help='For threshold tuning: Run S-curves at all intermediate steps. [default: %(default)s]')
     parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R3',help='Ring (or SAB) to run run the test on')
@@ -974,6 +926,14 @@ if __name__ == '__main__':
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive', db=tuning_db)
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='scurve', db=tuning_db)
         print('Done physics and pixel alive scan.\n\n')
+
+    if args.scurve:
+        run_calibration(ring=ring_id, module=mod_for_tuning, calib='scurve', db=tuning_db)
+        print('Done scurve scan.\n\n')
+
+    if args.pixelalive:
+        run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive', db=tuning_db)
+        print('Done scurve scan.\n\n')
 
         
     if args.tune_thresholds:
