@@ -1,0 +1,23 @@
+{
+"SAB":
+     { "0": { "data_lanes":[0,1,2,3]} },
+"R1":
+     { "R11": { "data_lanes":[0,1,2] },
+       "R12": { "data_lanes":[0,1,2] },
+       "R13": { "data_lanes":[0,1,2] },
+       "R14": { "data_lanes":[0,1,2] },
+       "R15": { "data_lanes":[0,1,2] }
+     }, 
+"R3":
+      {"R31": { "data_lanes": [3]},
+       "R32": { "data_lanes":[3] },
+       "R33": { "data_lanes":[3] },
+       "R34": { "data_lanes":[3] },
+       "R35": { "data_lanes":[3] },
+       "R36": { "data_lanes":[3] },
+       "R37": { "data_lanes":[3] },
+       "R38": { "data_lanes":[3] },
+       "R39": { "data_lanes":[3] }
+      }
+}
+    

@@ -1,0 +1,6 @@
+[ 
+{"module": "mod10",  "ring":"SAB", "position":"0",   "port":0     },
+{"module": "mod9",   "ring":"R3",  "position":"R31", "port":null  },
+{"module": "modT08", "ring":"R3",  "position":"R35", "port":null  },
+{"module": "modT09", "ring":"R3",  "position":"R39", "port":null  }
+]

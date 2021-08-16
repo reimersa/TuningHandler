@@ -25,6 +25,7 @@ def get_last_scan_file(scan_type):
         return lastfilename
         
 def safe_convert( str_value, to_type, value_name):
+    '''Convert string to another type, raising a verbose error if conversion doesn't workr.'''
     converted = None
     try:
        converted = to_type( str_value )

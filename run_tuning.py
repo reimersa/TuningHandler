@@ -85,7 +85,7 @@ positions_per_module_R3 = {
 
 ids_and_chips_per_module_SAB = {
     #'mod7': (1, [3])
-    'modT14': (1, [1, 2, 3])
+    'mod10': (0, [0, 1, 2, 3])
 }
         
 #A dictionary of different scans with settings which are (TAP0 list, TAP1 list, TAP2 list).
@@ -224,9 +224,11 @@ def confirm_settings( modules, chips, ring, positions, n_settings, value, db):
         print('response not understood, please use "y" or "n", not running tuning.')
         return False
 
-def run_threshold_tuning(module, ring, plotfoldername, intermediate_scurves=False, db=None):
-    reset_xml_files()
-    reset_txt_files()
+def run_threshold_tuning(module, ring, plotfoldername, mode='standard', intermediate_scurves=False, db=None):
+
+    if not mode=='standard' and not mode=='readjust' and not mode=='reequalize':
+        raise AttributeError(f'Invalid mode passed to \'run_threshold_tuning\': {mode}.')
+    
     
     module_per_id = {}
     if ring == 'R1':
@@ -239,46 +241,61 @@ def run_threshold_tuning(module, ring, plotfoldername, intermediate_scurves=Fals
     for modkey in id_per_module:
         id = id_per_module[modkey][0]
         module_per_id[id] = modkey
-        
-    # reset all VThreshold_LINs to 400
-    for module in id_per_module:
-        fresh_thresholds = {}
-        for chip in id_per_module[module][1]:
-            fresh_thresholds[chip] = '400'
-        set_thresholds_for_module(module=module, thresholds=fresh_thresholds)
-    print('Reset all VThreshold_LIN to 400.')
     
-    reset_xml_files()
-    run_calibration(ring=ring, module=module, calib='pixelalive',db=db)
-    if intermediate_scurves:
-        run_calibration(ring=ring, module=module, calib='scurve')
+    if mode == 'standard':
+        reset_xml_files()
+        reset_txt_files()
+        
+            
+        # reset all VThreshold_LINs to 400
+        for module in id_per_module:
+            fresh_thresholds = {}
+            for chip in id_per_module[module][1]:
+                fresh_thresholds[chip] = '400'
+            set_thresholds_for_module(module=module, thresholds=fresh_thresholds)
+        print('Reset all VThreshold_LIN to 400.')
+        
+        reset_xml_files()
+        run_calibration(ring=ring, module=module, calib='pixelalive',db=db)
+        if intermediate_scurves:
+            run_calibration(ring=ring, module=module, calib='scurve')
+    
+        run_calibration(ring=ring, module=module, calib='threqu',db=db)
+        if intermediate_scurves:
+            run_calibration(ring=ring, module=module, calib='scurve')
+    
+        run_calibration(ring=ring, module=module, calib='noise',db=db)
+        if intermediate_scurves:
+            run_calibration(ring=ring, module=module, calib='scurve')
 
-    run_calibration(ring=ring, module=module, calib='threqu',db=db)
-    if intermediate_scurves:
-        run_calibration(ring=ring, module=module, calib='scurve')
 
-    run_calibration(ring=ring, module=module, calib='noise',db=db)
-    if intermediate_scurves:
-        run_calibration(ring=ring, module=module, calib='scurve')
 
-    run_calibration(ring=ring, module=module, calib='thradj',db=db)
+    #### start here for readjust
+    if mode == 'standard' or mode == 'readjust':
+        reset_xml_files()
+        run_calibration(ring=ring, module=module, calib='thradj',db=db)
+            
+            
+        thresholds_per_id_and_chip = get_thresholds_from_last()
+        for id in thresholds_per_id_and_chip:
+            set_thresholds_for_module(module=module_per_id[id], thresholds=thresholds_per_id_and_chip[id])
+            print('set the following thresholds for module %s with id %s: '% (module_per_id[id], str(id)), thresholds_per_id_and_chip[id])
+            
+        reset_xml_files()
+        if intermediate_scurves:
+            run_calibration(ring=ring, module=module, calib='scurve')
         
         
-    thresholds_per_id_and_chip = get_thresholds_from_last()
-    for id in thresholds_per_id_and_chip:
-        set_thresholds_for_module(module=module_per_id[id], thresholds=thresholds_per_id_and_chip[id])
-        print('set the following thresholds for module %s with id %s: '% (module_per_id[id], str(id)), thresholds_per_id_and_chip[id])
         
-    reset_xml_files()
-    if intermediate_scurves:
-        run_calibration(ring=ring, module=module, calib='scurve')
-
-    run_calibration(ring=ring, module=module, calib='threqu',db=db)
-    if intermediate_scurves:
-        run_calibration(ring=ring, module=module, calib='scurve')
-
-    run_calibration(ring=ring, module=module, calib='noise',db=db)
-    run_calibration(ring=ring, module=module, calib='scurve', db=db)
+    #### start here for reequalization
+    if mode == 'standard' or mode == 'readjust' or mode == 'reequalize':
+        reset_xml_files()
+        run_calibration(ring=ring, module=module, calib='threqu',db=db)
+        if intermediate_scurves:
+            run_calibration(ring=ring, module=module, calib='scurve')
+    
+        run_calibration(ring=ring, module=module, calib='noise',db=db)
+        run_calibration(ring=ring, module=module, calib='scurve', db=db)
     pl.plot_scurve_results(runnr=get_last_runnr(), module_per_id=module_per_id, plotfoldername=plotfoldername)
 
 def get_last_runnr():
@@ -661,7 +678,7 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
                 #module = modules[0]
                 xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_%s_%s_%s.xml' % (ring, module, 'ber'))
                 reset_singleQuad_xml_files(type='ber', modules=modules, chips = chips_per_module[module])
-                prepare_singleQuad_xml_files(type_name='ber', type_setting='scurve', modules=modules)
+                prepare_singleQuad_xml_files(type_name='ber', type_setting='scurve', modules=module_info)
             elif ring == 'R1':
                 xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_disk%s_%s.xml' % (ring, 'ber'))
                 reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R1, ring)
@@ -769,7 +786,7 @@ def reset_xml_files():
 
     for type in daqsettings_per_xmltype:
         reset_singleQuad_xml_files(type=type, modules=modulelist)
-        prepare_singleQuad_xml_files(type_name=type, type_setting=type, modules=list(ids_and_chips_per_module_SAB), chips=ids_and_chips_per_module_SAB[list(ids_and_chips_per_module_SAB)[0]][1])
+        prepare_singleQuad_xml_files(type_name=type, type_setting=type, modules=ids_and_chips_per_module_SAB, chips=ids_and_chips_per_module_SAB[list(ids_and_chips_per_module_SAB)[0]][1])
         reset_and_prepare_Ring_xml_file(type, type, ids_and_chips_per_module_R1, 'R1')
         reset_and_prepare_Ring_xml_file(type, type, ids_and_chips_per_module_R3, 'R3')
     reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R1, 'R1')
@@ -831,7 +848,7 @@ def reset_and_prepare_Ring_xml_file(type_name, type_setting, ids_and_chips_per_m
 
 #PREPARE
 def prepare_singleQuad_xml_files(type_name, type_setting, modules=modulelist, chips=chiplist):
-    for module in modules:
+    for module in list(modules):
         xmlfilename = os.path.join(xmlfolder, 'CMSIT_singleQuad_%s_%s.xml' % (module, type_name))
         xmlobject = XMLInfo(xmlfilename)
         for setting in daqsettings_per_xmltype[type_setting]:
@@ -846,6 +863,10 @@ def prepare_singleQuad_xml_files(type_name, type_setting, modules=modulelist, ch
             settings = chip_settings_thismodule[str(chip)]
             for setting in settings:
                 xmlobject.set_chip_setting_by_modulename(module, int(chip), setting, settings[setting])
+                
+        # now at the very end, assign the correct HybridId, before it was the default, "1"
+        
+        xmlobject.set_module_attribute_by_moduleid(1, 'Id', modules[module][0])
         xmlobject.keep_only_chips_by_modulename(module, chips)
         xmlobject.save_xml_as(xmlfilename)
 
@@ -885,6 +906,8 @@ if __name__ == '__main__':
     parser.add_argument('--vtuning',  dest='vtuning',    action='store_true', default=False, help='tune VDDD/A [default: %(default)s]')
     parser.add_argument('--scurve',  dest='scurve',    action='store_true', default=False, help='run a single scurve scan. [default: %(default)s]')
     parser.add_argument('--pixelalive',  dest='pixelalive',    action='store_true', default=False, help='run a single pixelalive scan. [default: %(default)s]')
+    parser.add_argument('--reequalize',  dest='reequalize',    action='store_true', default=False, help='run the threshold tuning starting from the threqu step. Used to re-equalize thresholds, for example if the LDAC_LIN was insufficient in the previous tuning. [default: %(default)s]')
+    parser.add_argument('--readjust',  dest='readjust',    action='store_true', default=False, help='run the threshold tuning starting from the thradj step. Used to re-adjust thresholds, for example to lower values than in a previous scan. [default: %(default)s]')
     parser.add_argument('--thresholds',   dest='tune_thresholds', action='store_true', default=False, help='run threshold tuning. [default: %(default)s]')
     parser.add_argument('--all-scurves',  action='store_true', default=False, help='For threshold tuning: Run S-curves at all intermediate steps. [default: %(default)s]')
     parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R3',help='Ring (or SAB) to run run the test on')
@@ -933,11 +956,19 @@ if __name__ == '__main__':
 
     if args.pixelalive:
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive', db=tuning_db)
-        print('Done scurve scan.\n\n')
+        print('Done pixelalive scan.\n\n')
+
+    if args.readjust:
+        run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix, mode='readjust', intermediate_scurves =  args.all_scurves, db=tuning_db)
+        print('Done re-adjustment tuning. \n\n')
+
+    if args.reequalize:
+        run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix, mode='reequalize', intermediate_scurves =  args.all_scurves, db=tuning_db)
+        print('Done re-equalization tuning. \n\n')
 
         
     if args.tune_thresholds:
-        run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix, intermediate_scurves =  args.all_scurves, db=tuning_db)
+        run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix, mode='standard', intermediate_scurves =  args.all_scurves, db=tuning_db)
         print('Done threshold tuning. \n\n')
     
     if args.ber:
