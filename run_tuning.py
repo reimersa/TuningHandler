@@ -85,7 +85,7 @@ positions_per_module_R3 = {
 
 ids_and_chips_per_module_SAB = {
     #'mod7': (1, [3])
-    'mod10': (0, [0, 1, 2, 3])
+    'modT03': (0, [1,3])
 }
         
 #A dictionary of different scans with settings which are (TAP0 list, TAP1 list, TAP2 list).
@@ -901,6 +901,7 @@ if __name__ == '__main__':
     parser.add_argument('--test', action='store_true', default=False, help='FOR BER: run in test mode - do not log any results in the database. [default: %(default)s]')
     parser.add_argument('--rst-settings', dest='reset_settings', action='store_true', default=False, help='resest all text and xml files. [default: %(default)s]')
     parser.add_argument('--rst-backend',  dest='reset_backend',  action='store_true', default=False, help='reset backend board. [default: %(default)s]')
+    parser.add_argument('--rst-xml', dest='reset_xml', action='store_true', default=False, help='reset xml files. [default: %(default)s]')
     parser.add_argument('--program',      dest='program',        action='store_true', default=False, help='run programming (CMSIT -p). [default: %(default)s]')
     parser.add_argument('--calibration',  dest='calibration',    action='store_true', default=False, help='run calibrations (physics and pixelalive). [default: %(default)s]')
     parser.add_argument('--vtuning',  dest='vtuning',    action='store_true', default=False, help='tune VDDD/A [default: %(default)s]')
@@ -931,6 +932,8 @@ if __name__ == '__main__':
     if args.reset_settings:
         reset_all_settings()
         print('Done resestting all settings.\n\n')
+    elif args.reset_xml:
+    	reset_xml_files()
 
     if args.reset_backend:
         run_reset(ring=ring_id, module=mod_for_tuning)
