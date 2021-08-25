@@ -241,6 +241,16 @@ def clean_data(df, ring, min_frames=1e11):
     new_df = new_df[ new_df['NBER'] < 10e6 ]
     return new_df
 
+def plot_scurve_noise( df ):
+
+    fg = sns.catplot( x='Module', y='NoiseMean', hue='Ring', data=df )
+    plt.savefig('test_noise_by_mod.pdf')
+
+def plot_scurve_width( df ):
+    
+    fg = sns.catplot( x='Module', y='ThresholdStdDev_ele', hue='Ring', data=df )
+    plt.savefig('test_scurve_width_by_mod.pdf')
+
 def plot_scurve_results(runnr, module_per_id, plotfoldername='plots/thresholds/', tag=''):
     ROOT.gROOT.SetBatch(True)
     
