@@ -247,7 +247,7 @@ def plot_scurve_noise( df ):
 
 def plot_scurve_noise_by_module( df ):
     fg = sns.catplot( x='Ring', y='NoiseMean_ele', col='Module', hue='Name', data=df )
-    plt.savefig('test_noise_by_mod_cols.pdf')
+    plt.savefig('test_noise_by_mod_and_name.pdf')
 
 def plot_scurve_width( df ):
     fg = sns.catplot( x='Module', y='ThresholdStdDev_ele', hue='Ring', data=df )
