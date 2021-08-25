@@ -70,8 +70,8 @@ class RootScanResult:
             tcanvas = rf.Get( canvasname )
         return tcanvas
         
-    def _get_threshold_axis( self, **chipId):
-        tcanvas = self._get_canvas( 'Threshold1D', **chipId)
+    def _get_tgaxis_axis( self, scan_type, **chipId):
+        tcanvas = self._get_canvas( scan_type, **chipId)
         primitives =  tcanvas.GetListOfPrimitives()
         ret = None
         for prim in primitives:
@@ -79,8 +79,16 @@ class RootScanResult:
                 ret = prim
         return ret
 
-    def get_vcal_to_ele_function( self, **chipId):
-        axis = self._get_threshold_axis( **chipId )
+
+    class NoVcalToEleConversionForScanError(Exception):
+        pass
+
+    def get_vcal_to_ele_function( self, scan_type, **chipId):
+        known_scans = ['Noise1D','Threshold1D']
+        if not scan_type in known_scans:
+            raise NoVcalToEleConversionForScanError(f'''vcal to ele conversion cant be done for scan_type {scan_type},
+                                                         only known types are {known_scans}''')
+        axis = self._get_tgaxis_axis( scan_type, **chipId )
         ele_min = axis.GetWmin()
         ele_max = axis.GetWmax()
         vcal_min = axis.GetX1()

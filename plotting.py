@@ -242,14 +242,21 @@ def clean_data(df, ring, min_frames=1e11):
     return new_df
 
 def plot_scurve_noise( df ):
-
-    fg = sns.catplot( x='Module', y='NoiseMean', hue='Ring', data=df )
+    fg = sns.catplot( x='Module', y='NoiseMean_ele', hue='Ring', data=df )
     plt.savefig('test_noise_by_mod.pdf')
 
+def plot_scurve_noise_by_module( df ):
+    fg = sns.catplot( x='Ring', y='NoiseMean_ele', col='Module', hue='Name', data=df )
+    plt.savefig('test_noise_by_mod_cols.pdf')
+
 def plot_scurve_width( df ):
-    
     fg = sns.catplot( x='Module', y='ThresholdStdDev_ele', hue='Ring', data=df )
-    plt.savefig('test_scurve_width_by_mod.pdf')
+    plt.savefig('test_threshold_dispersion_by_mod.pdf')
+
+def plot_scurve_target_difference( df ):
+    df['ThresholdDiff'] = df['ThresholdMean_ele'] - df['TargetThreshold_ele']
+    fg = sns.catplot( x='Module', y='ThresholdDiff', hue='Ring', data=df)
+    plt.savefig('test_threshold_difference_from_target.pdf')
 
 def plot_scurve_results(runnr, module_per_id, plotfoldername='plots/thresholds/', tag=''):
     ROOT.gROOT.SetBatch(True)
