@@ -13,7 +13,7 @@ import os
 import argparse
 import glob
 
-from run_tuning import ensureDirectory
+# from run_tuning import ensureDirectory
 
 def plot_all_ber_from_scan(  db, scan_index, plotdir='plots/', 
                                 group_on = ['Module','Chip','TAP0'], cmap = sns.cm.rocket_r, grid=[None, None]):
@@ -171,6 +171,11 @@ def make_ber_heatmap(  pivots, **kwargs ):
     
     return ax
 
+def ensureDirectory(dirname):
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+        if not os.path.exists(dirname):
+            print('--> Failed to create directory \'%s\'' % dirname)
 
 def plot_voltages_from_scan( db, scan_index, xval='TAP0', plotdir='plots/voltages'):
     '''Make a grid of Scatter plots of VDDD and VDDA values from a scan'''
@@ -262,7 +267,7 @@ def plot_scurve_results(runnr, module_per_id, plotfoldername='plots/thresholds/'
     for module in modules:
         histpath = foldername + module
         moduleid = int(module.replace('Hybrid_', ''))
-        #modulename = module_per_id[moduleid]
+        modulename = module_per_id[moduleid]
         infile.cd()
         infile.cd(histpath)
         chips = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
@@ -279,13 +284,14 @@ def plot_scurve_results(runnr, module_per_id, plotfoldername='plots/thresholds/'
                 if canvasname == 'Channel': continue
                 canvas = infile.Get(os.path.join(fullhistpath, canvasname))
                 hist   = canvas.GetPrimitive(canvasname)
-                canvastitle = canvasname.split('_')[4] + '_' + chip
+                canvastitle = canvasname.split('_')[4] + '_' + module + '_' + chip
                 outcanvas = ROOT.TCanvas('c', canvastitle, 500, 500)
                 if 'SCurves' in canvastitle:
                     ROOT.gPad.SetLogz()
                 hist.Draw('colz')
                 ROOT.gStyle.SetOptStat(0);
                 outdir = os.path.join(plotfoldername, '')
+                print(canvastitle, tag)
                 outfilename = canvastitle  + tag + '_' + runnrstr + '.pdf'
                 #outfilename = outfilename.replace('Chip_', '%s_chip' % (modulename))
                 ensureDirectory(outdir)
