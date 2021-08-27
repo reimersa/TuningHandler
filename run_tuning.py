@@ -45,52 +45,44 @@ modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12',
 
 
 ids_and_chips_per_module_R1 = {
-    #'mod10': (3, [0,1,2]), 
-    #'mod12': (4, [0, 1, 2]),
-    'mod9' : ( 3, [0,1,2]),
-    'modT03' : (4, [0,1,2]),
-    'mod10' : (2, [0,1,2]),
-    'mod7': (0,  [ 1, 2]),
-    #'mod10': (0, [1, 2]),
-    #'mod12' : (1, [0, 1, 2] )
-    'mod11': (1, [0, 1, 2]), #new
+    #'mod9'  : (0, [0,1,2]   ),
+    'mod9'  : (4, [0,1]   ),
+    'mod10' : (3, [0,2]   ),
+    'mod11' : (2, [1] ), 
+    'mod12' : (1, [0,1] ),
+    'modT03': (0, [1]       )
 }
 
 positions_per_module_R1 = OrderedDict({ #OrderedDict keeps initialization order for python 3.6+
-    'mod11':  'R15',
-    'mod7':   'R14',
-    'mod10':  'R13',
-    'modT03': 'R12',
-    'mod9':   'R11'
+    'mod9':   'R11',
+    'mod10':  'R12',
+    'mod11':  'R13',
+    'mod12':  'R14',
+    'modT03': 'R15'
 })
 
 
 ids_and_chips_per_module_R3 = {
-    #'modT09': (1, [3]),  #checked
-    #'mod9':   (3, [3]), #checked
-    'mod11':  (6, [3]), #checked
-    #'mod7': (4, [3]), #cheked
-    'mod12':  (5,[3]),#checked
-    #'mod10':  (7, [3]), #checked
+    'mod11':  (6, [3]), 
+    'mod12':  (5,[3]),
 }
 positions_per_module_R3 = {
-    #'modT09': 'R35', #checked
-    'mod9':   'R31', #checked
-    'mod11':  'R38', #checked
-    'mod7':   'R37', #checked
-    'mod12':  'R39', #checked
-    'mod10':  'R36', #checked
+    'mod9':   'R31', 
+    'mod11':  'R38',
+    'mod7':   'R37',
+    'mod12':  'R39',
+    'mod10':  'R36'
 }
 
 
 ids_and_chips_per_module_SAB = {
-    #'mod7': (1, [3])
-    'modT03': (0, [1,3])
+    'modT09': (1, [0,1,2,3])
 }
         
 #A dictionary of different scans with settings which are (TAP0 list, TAP1 list, TAP2 list).
 ber_scan_types = { 'TAP0'   : ( [1000,900,800,700,600,500,400,300,200],[0],[0] ),
                'Single' : ( [1000], [0], [0] ),
+               'Island' : ( [1000,900,800,700,600,500,400,300,200],[0, -120],[0] ),
                'Full'   : ( [1000,900,800,700,600,500,400,300,200],[-120,-80,-40,0,40,80,120],[-120,-80,-40,0,40,80,120])
              }
         
@@ -422,7 +414,7 @@ def run_calibration(ring, module, calib, logfolder='log/', db=None):
             for chip in mod_info['chips']:
                 pos = get_module_position(mod, ring)
                 scan_info =  {'ScanIndex': scan_index, 'ScanType': calib, 'Ring': ring, 
-                        'Pos': pos, 'RunNumber':run_number, 'Module':mod, 'Chip': chip, 'start_time':start_time, 'start_time_human':get_human_time(start_time), 'IsArchived':False} 
+                        'Pos': pos, 'Port': hybrid_id, 'RunNumber':run_number, 'Module':mod, 'Chip': chip, 'start_time':start_time, 'start_time_human':get_human_time(start_time), 'IsArchived':False} 
                 calib_info = read_calibration_log( chip, logfilename, hybrid=hybrid_id )
                 scan_info.update(calib_info)
                 chip_temps_and_voltages = temps_and_voltages[hybrid_id][chip]
@@ -911,7 +903,7 @@ if __name__ == '__main__':
     parser.add_argument('--readjust',  dest='readjust',    action='store_true', default=False, help='run the threshold tuning starting from the thradj step. Used to re-adjust thresholds, for example to lower values than in a previous scan. [default: %(default)s]')
     parser.add_argument('--thresholds',   dest='tune_thresholds', action='store_true', default=False, help='run threshold tuning. [default: %(default)s]')
     parser.add_argument('--all-scurves',  action='store_true', default=False, help='For threshold tuning: Run S-curves at all intermediate steps. [default: %(default)s]')
-    parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R3',help='Ring (or SAB) to run run the test on')
+    parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R1',help='Ring (or SAB) to run run the test on')
     parser.add_argument('-m','--mod-for-tuning', choices=modulelist, default='modT09', help='Module used for tuning. [default: %(default)s]')
     parser.add_argument('--prefix', default='default', help='Prefix to use for plotting folder name, when running threshold tuning. [defaults %(default)s]')
     args = parser.parse_args()
@@ -950,7 +942,7 @@ if __name__ == '__main__':
     if args.calibration:
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='physics', db=tuning_db)
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive', db=tuning_db)
-        run_calibration(ring=ring_id, module=mod_for_tuning, calib='scurve', db=tuning_db)
+        #run_calibration(ring=ring_id, module=mod_for_tuning, calib='scurve', db=tuning_db)
         print('Done physics and pixel alive scan.\n\n')
 
     if args.scurve:
