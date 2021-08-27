@@ -13,7 +13,7 @@ import os
 import argparse
 import glob
 
-from run_tuning import ensureDirectory
+from utils import ensureDirectory
 
 def plot_all_ber_from_scan(  db, scan_index, plotdir='plots/', 
                                 group_on = ['Module','Chip','TAP0'], cmap = sns.cm.rocket_r, grid=[None, None]):
@@ -241,42 +241,59 @@ def clean_data(df, ring, min_frames=1e11):
     new_df = new_df[ new_df['NBER'] < 10e6 ]
     return new_df
 
-def plot_scurve_noise( df ):
+def plot_scurve_noise( df, plot_dir='./' ):
     fg = sns.catplot( x='Module', y='NoiseMean_ele', hue='Ring', data=df )
-    plt.savefig('test_noise_by_mod.pdf')
+    plt.savefig(os.path.join(plot_dir, 'test_noise_by_mod.pdf'))
 
-def plot_scurve_noise_v_temp( df ):
+def plot_scurve_noise_v_temp( df, plot_dir='./' ):
     df['TEMPSENS_AVG'] = (df['TEMPSENS_1'] + df['TEMPSENS_2'] + df['TEMPSENS_3'] + df['TEMPSENS_4'])/4
     fg = sns.relplot( x='TEMPSENS_AVG', y='NoiseMean_ele', hue='Module', data=df )
-    plt.savefig('test_noise_by_temp.pdf')
+    plt.savefig(os.path.join(plot_dir, 'test_noise_by_temp.pdf'))
 
-def plot_scurve_noise_v_vdd( df, vtype='dig' ):
+def plot_scurve_noise_v_vdd( df, vtype='dig', plot_dir='./' ):
     fg = sns.relplot( x=f'VOUT_{vtype}_ShuLDO', y='NoiseMean_ele', hue='Module', data=df )
-    plt.savefig(f'test_noise_by_vdd{vtype}.pdf')
+    plt.savefig(os.path.join(plot_dir, f'test_noise_by_vdd{vtype}.pdf'))
 
-def plot_scurve_masked_pix_by_temp( df, vtype='dig' ):
+def plot_scurve_masked_pix_by_temp( df, vtype='dig', plot_dir='./' ):
     df['TEMPSENS_AVG'] = (df['TEMPSENS_1'] + df['TEMPSENS_2'] + df['TEMPSENS_3'] + df['TEMPSENS_4'])/4
     fg = sns.relplot( x='TEMPSENS_AVG', y='InitMaskedPix', col='TargetThreshold_ele', hue='Module', data=df )
-    plt.savefig(f'test_masked_pix_by_temp.pdf')
+    plt.savefig(os.path.join(plot_dir,'test_masked_pix_by_temp.pdf'))
 
-def plot_temp_correlations(df):
+def plot_temp_correlations(df, plot_dir='./'):
     for sens_no in ['1','2','3','4']:
         df[f'tdiff_{sens_no}'] = df['TEMPSENS_2'] - df[f'TEMPSENS_{sens_no}']
     fg = sns.pairplot( df[['tdiff_1','tdiff_2','tdiff_3','tdiff_4']])
-    plt.savefig('test_temperature_sensor_correlations.pdf')
+    plt.savefig(os.path.join(plot_dir,'test_temperature_sensor_correlations.pdf'))
 
-def plot_scurve_noise_by_module( df ):
+def plot_scurve_noise_by_module( df, plot_dir='./'):
     fg = sns.catplot( x='Ring', y='NoiseMean_ele', col='Module', hue='Name', data=df )
-    plt.savefig('test_noise_by_mod_and_name.pdf')
+    plt.savefig(os.path.join(plot_dir,'test_noise_by_mod_and_name.pdf'))
 
-def plot_scurve_width( df ):
+def plot_scurve_width( df, plot_dir='./'):
     fg = sns.catplot( x='Module', y='ThresholdStdDev_ele', hue='Ring', data=df )
-    plt.savefig('test_threshold_dispersion_by_mod.pdf')
+    plt.savefig(os.path.join(plot_dir,'test_threshold_dispersion_by_mod.pdf'))
 
-def plot_scurve_target_difference( df ):
+def plot_scurve_target_difference( df, plot_dir='./' ):
     df['ThresholdDiff'] = df['ThresholdMean_ele'] - df['TargetThreshold_ele']
     fg = sns.catplot( x='Module', y='ThresholdDiff', hue='Ring', data=df)
-    plt.savefig('test_threshold_difference_from_target.pdf')
+    plt.savefig(os.path.join(plot_dir, 'test_threshold_difference_from_target.pdf'))
+
+def plot_scurve_summaries( scurve_df, plot_dir='plots/scurves' ):
+
+    if not os.path.exists(plot_dir):
+        os.mkdir(plot_dir)
+
+    scurve_df = scurve_df[ ~(scurve_df['Module'] == 'modT14') ] #should find a better way to exclude this
+    plot_scurve_noise(scurve_df, plot_dir)
+    plot_scurve_noise_by_module(scurve_df, plot_dir,)
+    plot_scurve_width(scurve_df, plot_dir)
+    plot_scurve_target_difference( scurve_df, plot_dir)
+    plot_scurve_noise_v_temp( scurve_df, plot_dir )
+    plot_temp_correlations( scurve_df,plot_dir )
+    plot_scurve_masked_pix_by_temp( scurve_df, plot_dir )
+    plot_scurve_noise_v_vdd( scurve_df, vtype='dig', plot_dir=plot_dir )
+    plot_scurve_noise_v_vdd( scurve_df, vtype='ana',plot_dir=plot_dir )
+    
 
 def plot_scurve_results(runnr, module_per_id, plotfoldername='plots/thresholds/', tag=''):
     ROOT.gROOT.SetBatch(True)
@@ -330,6 +347,10 @@ def plot_scurve_results(runnr, module_per_id, plotfoldername='plots/thresholds/'
                 outcanvas.SaveAs(outdir + outfilename.replace('pdf', 'png'))
     del infile
     
+def merge_scurve_and_tuning_df( scurve_df, tuning_df ):
+    scurve_df = scurve_df.merge( tuning_df, how='left', on=['RunNumber','Module','Chip'])
+    return scurve_df
+
 if __name__=='__main__':
 
     ber_variables = ['TAP0','TAP1','TAP2','Module','Chip']
@@ -346,23 +367,33 @@ if __name__=='__main__':
     parser.add_argument('--min-frames', type=float, default=1e11, help='Minimum number of frames required for a scan to be considered in the summary plot. [default %(default)s]')
     parser.add_argument('--ring', type=str, default='R1', choices=['R1', 'R3', 'R5'], help='Ring to plot summary of. [default %(default)s]')
     parser.add_argument('--do-size', action='store_true', default=False, help='Scale line size to the number of frames in the scan when doing summary plots. [default %(default)s]')
+    parser.add_argument('--scurve-summary', action='store_true', default=False, help='Plot SCurve summary plots from the scurve and tuning databases')
     
     args = parser.parse_args()
     db_fname = args.database
 
     db = tdb.TuningDataBase(db_fname)
 
-    scan_number = int(args.scan_number) if args.scan_number is not None else db.get_last_scan_id()
 
 
-    if args.summary:
+    if args.scurve_summary:
+        tuning_db = 'tuning_db/tuning.json'
+        scurve_db = 'tuning_db/scurves.json'
+        tuning_df = tdb.TuningDataBase( tuning_db).get_info()
+        scurve_df = tdb.TuningDataBase( scurve_db).get_info()
+        scurve_df = merge_scurve_and_tuning_df( scurve_df, tuning_df )
+        print(scurve_df)
+        plot_scurve_summaries(scurve_df)
+
+    elif args.summary:
         plot_ber_vs_tap(db, ring = args.ring, min_frames = args.min_frames, do_size=args.do_size)
-    elif args.voltages:
-        plot_voltages_from_scan(db, scan_number)
-    else:    
-        if args.xgrid == 'None':
-            args.xgrid = None
-        if args.ygrid == 'None':
-            args.ygrid = None
-        plot_all_ber_from_scan(db, scan_number, group_on=args.group_on, grid=[args.xgrid, args.ygrid])
-
+    else:
+        scan_number = int(args.scan_number) if args.scan_number is not None else db.get_last_scan_id()
+        if args.voltages:
+            plot_voltages_from_scan(db, scan_number)
+        else:    
+            if args.xgrid == 'None':
+                args.xgrid = None
+            if args.ygrid == 'None':
+                args.ygrid = None
+            plot_all_ber_from_scan(db, scan_number, group_on=args.group_on, grid=[args.xgrid, args.ygrid])

@@ -14,6 +14,12 @@ def safe_convert( str_value, to_type, value_name):
     return converted
 
 
+def ensureDirectory(dirname):
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+        if not os.path.exists(dirname):
+            print('--> Failed to create directory \'%s\'' % dirname)
+
 #def get_masked_pix(runnr, log=None, db=None):
 #    """Get the number of masked pixels during a run, try it first from the database if available,
 #        if not, try the log file."""

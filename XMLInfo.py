@@ -213,7 +213,11 @@ class XMLInfo:
         return dct
             
 
+
 class ArchivedXMLInfo(XMLInfo):
+
+    class ArchivedFileFindingException(Exception):
+        pass
 
     def __init__(self, run_number, scan_type, directory):
         self.run_number = run_number
@@ -223,7 +227,12 @@ class ArchivedXMLInfo(XMLInfo):
         
     @property
     def filename(self):
-        return glob.glob( os.path.join(self.directory,f'Run{self.run_number:06d}*.xml' ) )[0]
+        file_expression = os.path.join(self.directory,f'Run{self.run_number:06d}*.xml' ) 
+        found_files = glob.glob( file_expression )
+        if not len(found_files) == 1:
+            raise self.ArchivedFileFindingException(f'''When try looking for the archived file, by searching the expression {file_expression},
+expected exactly 1 matching file. But instead found {len(found_files)} matches: {found_files}''')
+        return found_files[0]
 
 def get_modulename_from_txtfilename(txtfilename):
     for part in txtfilename.split('_'):

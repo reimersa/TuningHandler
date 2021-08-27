@@ -881,12 +881,6 @@ def get_xmlfile_name(ring, module, calib):
     else:
         return '_'.join(['CMSIT', 'disk' + ring, calib]) + '.xml'
 
-def ensureDirectory(dirname):
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
-        if not os.path.exists(dirname):
-            print('--> Failed to create directory \'%s\'' % dirname)
-
 def escape_ansi(line):
     ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
     return ansi_escape.sub('', line)

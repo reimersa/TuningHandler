@@ -4,7 +4,9 @@ from mark_tuning_as_good import Archive
 from root_reader import RootScanResult
 from tuning_db import TuningDataBase
 import plotting
+
 from XMLInfo import ArchivedXMLInfo, XMLInfo
+import argparse 
 
 import os
 
@@ -60,8 +62,6 @@ def get_vcal_and_ele_mean_and_stdev( hist_type, scan_result, chip, hybrid=0, opt
             f'{name}Mean_ele': e_mean, f'{name}StdDev_ele': e_stdev }
     return dct
 
-
-
 def drop_nan_hybrid_entries( tdb_df ):
     tdb_df = tdb_df[ ~tdb_df['Port'].isnull() ]
     return tdb_df
@@ -77,6 +77,14 @@ def entry_in_scurve_df( df_entry, scurve_df ):
                           (scurve_df['Module'] == module) ) ]
     return len(df_copy) > 0
     
+def update_tuning_db_ports( archive_dir, tuning_db):
+    archive = Archive(archive_dir) 
+    tuning_db = TuningDataBase(tuning_db)
+
+    tdb_df = tuning_db.get_info()
+    tdb_df = keep_only_archived_scurves( tdb_df )
+    tdb_df = add_missing_hybrid_entries( tdb_df, archive )
+    print(tdb_df)
 
 def fill_db( archive_dir, tuning_db, scurve_db ):
     archive = Archive(archive_dir) 
@@ -85,8 +93,7 @@ def fill_db( archive_dir, tuning_db, scurve_db ):
 
     tdb_df = tuning_db.get_info()
     tdb_df = keep_only_archived_scurves( tdb_df )
-    #tdb_df = drop_nan_hybrid_entries( tdb_df )
-    tdb_df = add_missing_hybrid_entries( tdb_df, archive )
+    tdb_df = drop_nan_hybrid_entries( tdb_df )
     
     scurve_df = scurve_db.get_info()
 
@@ -114,27 +121,18 @@ def fill_db( archive_dir, tuning_db, scurve_db ):
         scurve_db.add_data( new_entries )
         scurve_db.update()
 
-    scurve_df = scurve_db.get_info()
-    scurve_df = scurve_df.merge( tdb_df, how='left', on=['RunNumber','Module','Chip'])
-    print(tdb_df)
-    print(scurve_df)
-    scurve_df = scurve_df[ ~(scurve_df['Module'] == 'modT14') ]
-    plotting.plot_scurve_noise(scurve_df)
-    plotting.plot_scurve_noise_by_module(scurve_df)
-    plotting.plot_scurve_width(scurve_df)
-    plotting.plot_scurve_target_difference( scurve_df )
-    plotting.plot_scurve_noise_v_temp( scurve_df )
-    plotting.plot_temp_correlations( scurve_df )
-    plotting.plot_scurve_masked_pix_by_temp( scurve_df )
-    plotting.plot_scurve_noise_v_vdd( scurve_df, vtype='dig' )
-    plotting.plot_scurve_noise_v_vdd( scurve_df, vtype='ana' )
-    
 
 if __name__=='__main__':
-    archive_dir = 'archive/'
-    tuning_db = 'tuning_db/tuning.json'
-    scurve_db = 'tuning_db/scurves.json'
-    fill_db(archive_dir, tuning_db, scurve_db )
-    #get_missing_ports(68925,'R1','scurve')           
+    parser = argparse.ArgumentParser(description='Mark a given run as good. Identify it in the database, and archive its files.')
+    parser.add_argument('--update', action='store_true',default=False, help='Update the scurve database information with latest runs. [default: %(default)s]' )
+    parser.add_argument('--tuning-db', default='tuning_db/tuning.json', help='Database file for general tuning. [default: %(default)s]')
+    parser.add_argument('--scurve-db', default='tuning_db/scurves.json', help='Database file with scurve specific information. [default: %(default)s]')
+    parser.add_argument('--archive',dest='archive_dir', default='archive/', help='Directory for archiving relevant files. [default: %(default)s]')
+    parser.add_argument('--update-ports', action="store_true", default=False, help='Extract the module to port mapping from xml files and use it to update missing entries in the tuning database')
     
+    args = parser.parse_args()
+    if args.update:
+        fill_db(args.archive_dir, args.tuning_db, args.scurve_db )
+    elif args.update_ports: 
+        update_tuning_db_ports(args.archive_dir, args.tuning_db )
 
