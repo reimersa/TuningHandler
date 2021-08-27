@@ -123,6 +123,11 @@ def fill_db( archive_dir, tuning_db, scurve_db ):
     plotting.plot_scurve_noise_by_module(scurve_df)
     plotting.plot_scurve_width(scurve_df)
     plotting.plot_scurve_target_difference( scurve_df )
+    plotting.plot_scurve_noise_v_temp( scurve_df )
+    plotting.plot_temp_correlations( scurve_df )
+    plotting.plot_scurve_masked_pix_by_temp( scurve_df )
+    plotting.plot_scurve_noise_v_vdd( scurve_df, vtype='dig' )
+    plotting.plot_scurve_noise_v_vdd( scurve_df, vtype='ana' )
     
 
 if __name__=='__main__':

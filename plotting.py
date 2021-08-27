@@ -245,6 +245,26 @@ def plot_scurve_noise( df ):
     fg = sns.catplot( x='Module', y='NoiseMean_ele', hue='Ring', data=df )
     plt.savefig('test_noise_by_mod.pdf')
 
+def plot_scurve_noise_v_temp( df ):
+    df['TEMPSENS_AVG'] = (df['TEMPSENS_1'] + df['TEMPSENS_2'] + df['TEMPSENS_3'] + df['TEMPSENS_4'])/4
+    fg = sns.relplot( x='TEMPSENS_AVG', y='NoiseMean_ele', hue='Module', data=df )
+    plt.savefig('test_noise_by_temp.pdf')
+
+def plot_scurve_noise_v_vdd( df, vtype='dig' ):
+    fg = sns.relplot( x=f'VOUT_{vtype}_ShuLDO', y='NoiseMean_ele', hue='Module', data=df )
+    plt.savefig(f'test_noise_by_vdd{vtype}.pdf')
+
+def plot_scurve_masked_pix_by_temp( df, vtype='dig' ):
+    df['TEMPSENS_AVG'] = (df['TEMPSENS_1'] + df['TEMPSENS_2'] + df['TEMPSENS_3'] + df['TEMPSENS_4'])/4
+    fg = sns.relplot( x='TEMPSENS_AVG', y='InitMaskedPix', col='TargetThreshold_ele', hue='Module', data=df )
+    plt.savefig(f'test_masked_pix_by_temp.pdf')
+
+def plot_temp_correlations(df):
+    for sens_no in ['1','2','3','4']:
+        df[f'tdiff_{sens_no}'] = df['TEMPSENS_2'] - df[f'TEMPSENS_{sens_no}']
+    fg = sns.pairplot( df[['tdiff_1','tdiff_2','tdiff_3','tdiff_4']])
+    plt.savefig('test_temperature_sensor_correlations.pdf')
+
 def plot_scurve_noise_by_module( df ):
     fg = sns.catplot( x='Ring', y='NoiseMean_ele', col='Module', hue='Name', data=df )
     plt.savefig('test_noise_by_mod_and_name.pdf')
