@@ -5,6 +5,8 @@ import subprocess
 import xml.sax
 from copy import deepcopy
 
+import glob
+
 class XMLInfo:
     def __init__(self, xmlfilename):
         self.xmlfilename = xmlfilename
@@ -170,11 +172,20 @@ class XMLInfo:
         newsetting.appendChild(newvalue)
         return
 
-
-    def print_daq_settings(self):
+    def get_daq_settings(self):
+        daq_settings = {}
         settings_mother = [n for n in self.document.childNodes[0].childNodes if n.nodeType is minidom.Node.ELEMENT_NODE and n.tagName == 'Settings'][0]
         for setting in [n for n in settings_mother.childNodes if n.nodeType is minidom.Node.ELEMENT_NODE and n.tagName == 'Setting']:
-            print(setting.getAttribute('name'), setting.childNodes[0].data)
+            daq_settings[setting.getAttribute('name')]  = setting.childNodes[0].data
+        return daq_settings
+
+    def print_daq_settings(self):
+        daq_settings = self.get_daq_settings()
+        for key, val in daq_settings:
+            print(key, val)
+        #settings_mother = [n for n in self.document.childNodes[0].childNodes if n.nodeType is minidom.Node.ELEMENT_NODE and n.tagName == 'Settings'][0]
+        #for setting in [n for n in settings_mother.childNodes if n.nodeType is minidom.Node.ELEMENT_NODE and n.tagName == 'Setting']:
+        #    print(setting.getAttribute('name'), setting.childNodes[0].data)
 
 
     def enable_monitoring( self ):
@@ -203,6 +214,26 @@ class XMLInfo:
             
 
 
+class ArchivedXMLInfo(XMLInfo):
+
+    class ArchivedFileFindingException(Exception):
+        pass
+
+    def __init__(self, run_number, scan_type, directory):
+        self.run_number = run_number
+        self.scan_type = scan_type
+        self.directory = directory
+        super().__init__( self.filename )
+        
+    @property
+    def filename(self):
+        file_expression = os.path.join(self.directory,f'Run{self.run_number:06d}*.xml' ) 
+        found_files = glob.glob( file_expression )
+        if not len(found_files) == 1:
+            raise self.ArchivedFileFindingException(f'''When try looking for the archived file, by searching the expression {file_expression},
+expected exactly 1 matching file. But instead found {len(found_files)} matches: {found_files}''')
+        return found_files[0]
+
 def get_modulename_from_txtfilename(txtfilename):
     for part in txtfilename.split('_'):
         if 'mod' in part:
@@ -211,4 +242,3 @@ def get_modulename_from_txtfilename(txtfilename):
 
 
 
-#
