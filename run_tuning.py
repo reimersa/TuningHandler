@@ -45,18 +45,17 @@ modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12',
 
 
 ids_and_chips_per_module_R1 = {
-    #'mod9'  : (0, [0,1,2]   ),
-    'mod9'  : (4, [0,1]   ),
+    'modT09'  : (4, [0,2]   ),
     'mod10' : (3, [0,2]   ),
-    'mod11' : (2, [1] ), 
+    'mod6' : (2, [0,2] ), 
     'mod12' : (1, [0,1] ),
     'modT03': (0, [1]       )
 }
 
 positions_per_module_R1 = OrderedDict({ #OrderedDict keeps initialization order for python 3.6+
-    'mod9':   'R11',
+    'modT09': 'R11',
     'mod10':  'R12',
-    'mod11':  'R13',
+    'mod6':  'R13',
     'mod12':  'R14',
     'modT03': 'R15'
 })
@@ -76,13 +75,14 @@ positions_per_module_R3 = {
 
 
 ids_and_chips_per_module_SAB = {
-    'modT09': (1, [0,1,2,3])
+    'modT01': (1, [0,1])
 }
         
 #A dictionary of different scans with settings which are (TAP0 list, TAP1 list, TAP2 list).
 ber_scan_types = { 'TAP0'   : ( [1000,900,800,700,600,500,400,300,200],[0],[0] ),
                'Single' : ( [1000], [0], [0] ),
                'Island' : ( [1000,900,800,700,600,500,400,300,200],[0, -120],[0] ),
+               'MiniFull' : ( [1000,900,800,700,600,500,400,300,200],[120,0, -120],[120,0,-120] ),
                'Full'   : ( [1000,900,800,700,600,500,400,300,200],[-120,-80,-40,0,40,80,120],[-120,-80,-40,0,40,80,120])
              }
         
@@ -111,7 +111,7 @@ def get_scan_taps( scan_name ):
         raise KeyError(f'''Could not find scan by name of {scan_name} in the list of scan types. 
                         Known scans are {ber_scan_types.keys()}''')
 
-def setup_and_run_ber( run_time=3, ring_id='R1', test_only=False, scan_type='TAP0' ):
+def setup_and_run_ber( run_time=3, ring_id='R1', test_only=False, scan_type='TAP0', other_chip_mode='AURORA' ):
 
     if ring_id == 'singleQuad': 
         ids_and_chips = ids_and_chips_per_module_SAB
@@ -163,7 +163,7 @@ def setup_and_run_ber( run_time=3, ring_id='R1', test_only=False, scan_type='TAP
                               tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
                               mylogfolder = logfolder_for_ber, 
                               value=run_time, 
-                             db=db)
+                             db=db, other_chip_mode=other_chip_mode)
     print(f'Finished Scan {last_index}')
     
 
@@ -637,8 +637,30 @@ def get_num_settings( tap_settings ):
             n_settings += len(settings_list)
     return n_settings
     
+class UnknownDataModeForOtherChipsException(Exception):
+	pass
 
-def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_settings_per_module_and_chip, mylogfolder, mode='time', value=10, db=None):
+class SerializerMode:
+    _chip_modes_dct = { 'AURORA':'1', 'PRBS':'2', 'GND':'3', 'SER_CLK':'0' }
+    def __init__(self, mode):
+        if not mode in self._chip_modes_dct:
+            raise UnknownDataModeForOtherChipsException(f'''Data Mode for other chips during BER scan was requested as {mode},
+this mode is unknown, the value should be one of {self._chip_modes_dct.keys()}''')	
+        self._mode = mode
+	
+    def name(self):
+        return self._mode
+		
+    def value(self):
+        return self._chip_modes_dct[self._mode]
+	
+    @classmethod
+    def list_modes(cls):
+        return list(cls._chip_modes_dct.keys())
+		
+
+def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_settings_per_module_and_chip, mylogfolder, mode='time', value=10, db=None, other_chip_mode='AURORA'):
+
 
     n_settings = get_num_settings(tap_settings_per_module_and_chip) 
     settings_are_correct = confirm_settings( modules, chips_per_module, ring, positions_per_module, n_settings, value, db)
@@ -661,6 +683,40 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
 
     module_info = modules
     modules = modules.keys()
+
+
+    ### begin hack: here set the SER_SEL_OUT of all chips on all modules (that are going to be used for the BER test) to 3 = GND  (or 1 = AURORA).
+    
+
+    if ring == 'singleQuad':
+        if not len(modules) == 1:
+            raise AttributeError('Trying to run BER in singleQuad mode with mode than one module')
+        xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_%s_%s_%s.xml' % (ring, modules[0], 'ber'))
+        reset_singleQuad_xml_files(type='ber', modules=modules, chips = chips_per_module[modules[0]])
+        prepare_singleQuad_xml_files(type_name='ber', type_setting='scurve', modules=module_info)
+    elif ring == 'R1':
+        xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_disk%s_%s.xml' % (ring, 'ber'))
+        reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R1, ring)
+    elif ring == 'R3':
+        xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_disk%s_%s.xml' % (ring, 'ber'))
+        reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R3, ring)
+    xmlobject = XMLInfo(xmlfile_for_ber)
+
+    ### set SER_SEL_OUT to GND for all modules we will cycle through
+    ### default: 1 = aurora, now 3 = GND
+    
+    for m in modules:
+        for c in chips_per_module[m]:
+            #print(f'setting serselout for mod {m} chip {c}')
+            xmlobject.set_chip_setting_by_modulename(m, c, 'SER_SEL_OUT', SerializerMode(other_chip_mode).value())
+    xmlobject.save_xml_as(xmlfile_for_ber)
+    command_program = f'CMSITminiDAQ -f {xmlfile_for_ber} -p' 
+    os.system(command_program)
+
+    ### end hack
+
+    
+    
     for moduleidx, module in enumerate(modules):
         for chip in chips_per_module[module]:
             tap_settings = tap_settings_per_module_and_chip[module][chip]
@@ -679,6 +735,7 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
                 reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R3, ring)
             xmlobject = XMLInfo(xmlfile_for_ber)
             print( module, chip)
+            
             xmlobject.keep_only_modules_by_modulename([module])
             xmlobject.keep_only_chips_by_modulename(module, [chip])
 
@@ -751,6 +808,13 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
                     db.add_data( [ run_info ] )
                     db.update()
 
+            ### hack begin: here, need to reset the SER_SEL_OUT of the one chip that did the BER scan back to GND = 3 (or AURORA = 1). Ph2_ACF automatically resets it to 1 = AURORA. At this point, this chip will not be used anymore, so set it to GND (or AURORA) for all the remaining runs (of other chips)
+            print(module, chip)
+            xmlobject.set_chip_setting_by_modulename(module, chip, 'SER_SEL_OUT', SerializerMode(other_chip_mode).value())
+            xmlobject.save_xml_as(xmlfile_for_ber)
+            os.system(command_program) # still the same command as above, "-f ...ber.xml -p"
+            ### hack end
+                    
     return scan_index               
         
 
@@ -884,6 +948,7 @@ if __name__ == '__main__':
     parser.add_argument('-t','--run-time', default=3, type=int, help='run time per setting in seconds. [default %(default)s]')
     parser.add_argument('--ber', action='store_true', default=False, help='run Bit Error Rate Scans [default: %(default)s]')
     parser.add_argument('--scan-type', choices=ber_scan_types.keys(), default='TAP0', help='BER Scan type (determines which TAP values to scan over. [default: %(default)s]')
+    parser.add_argument('--other-chip-mode', choices=SerializerMode.list_modes(), default='AURORA', help='Serialization modes for neighbour chips to the chip under test when performing BER scans [default: %(default)s]')
     parser.add_argument('--test', action='store_true', default=False, help='FOR BER: run in test mode - do not log any results in the database. [default: %(default)s]')
     parser.add_argument('--rst-settings', dest='reset_settings', action='store_true', default=False, help='resest all text and xml files. [default: %(default)s]')
     parser.add_argument('--rst-backend',  dest='reset_backend',  action='store_true', default=False, help='reset backend board. [default: %(default)s]')
@@ -961,5 +1026,5 @@ if __name__ == '__main__':
         print('Done threshold tuning. \n\n')
     
     if args.ber:
-        setup_and_run_ber( args.run_time, args.ring, test_only = args.test, scan_type=args.scan_type)
+        setup_and_run_ber( args.run_time, args.ring, test_only = args.test, scan_type=args.scan_type, other_chip_mode=args.other_chip_mode)
         print('Done Bit Error Rate Test.\n\n')
