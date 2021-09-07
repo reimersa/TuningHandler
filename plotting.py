@@ -242,41 +242,156 @@ def clean_data(df, ring, min_frames=1e11):
     return new_df
 
 def plot_scurve_noise( df, plot_dir='./' ):
-    fg = sns.catplot( x='Module', y='NoiseMean_ele', hue='Ring', data=df )
-    plt.savefig(os.path.join(plot_dir, 'test_noise_by_mod.pdf'))
+    #df = df[ (~df['Module'].isin(['modT03','modT09']) ) | (df['HV'] == -50) ]
+    df = df[ (~df['Module'].str.contains('Sensor') ) | (df['HV'] == -50) ]
+    fg = sns.catplot( x='Module', y='Mean Noise (electrons)', hue='Ring', data=df )
+    fg.set_xticklabels(labels=fg.axes[-1][-1].get_xticklabels(), rotation=25, horizontalalignment='right')
+    plt.savefig(os.path.join(plot_dir, 'test_noise_by_mod.pdf'), bbox_inches='tight')
 
 def plot_scurve_noise_v_temp( df, plot_dir='./' ):
-    df['TEMPSENS_AVG'] = (df['TEMPSENS_1'] + df['TEMPSENS_2'] + df['TEMPSENS_3'] + df['TEMPSENS_4'])/4
-    fg = sns.relplot( x='TEMPSENS_AVG', y='NoiseMean_ele', hue='Module', data=df )
-    plt.savefig(os.path.join(plot_dir, 'test_noise_by_temp.pdf'))
+    #df = df[ (~df['Module'].isin(['modT03','modT09']) ) | (df['HV'] == -50) ]
+    df = df[ (~df['Module'].str.contains('Sensor') ) | (df['HV'] == -50) ]
+    df = df[ df['TargetThreshold_ele'] == 1500  ]
+    fg = sns.relplot( x='TEMPSENS_AVG', y='Mean Noise (electrons)', hue='Module', col='Ring', data=df )
+    plt.savefig(os.path.join(plot_dir, 'test_noise_by_temp.pdf'), bbox_inches='tight')
+
+def plot_scurve_masked_pix_v_temp( df, plot_dir='./' ):
+    #df = df[ (~df['Module'].isin(['modT03','modT09']) ) | (df['HV'] == -50) ]
+    df = df[ (~df['Module'].str.contains('Sensor') ) | (df['HV'] == -50) ]
+    df = df[ df['TargetThreshold_ele'] == 1500  ]
+    df['Masked Pixels'] = df['InitMaskedPix']
+    fg = sns.relplot( x='TEMPSENS_AVG', y='Masked Pixels', hue='Module', col='Ring', data=df )
+    plt.savefig(os.path.join(plot_dir, 'test_masked_pix_by_temp.pdf'), bbox_inches='tight')
+
+def plot_scurve_width_v_temp( df, plot_dir='./' ):
+    #df = df[ (~df['Module'].isin(['modT03','modT09']) ) | (df['HV'] == -50) ]
+    df = df[ (~df['Module'].str.contains('Sensor') ) | (df['HV'] == -50) ]
+    df = df[ df['TargetThreshold_ele'] == 1500  ]
+    fg = sns.relplot( x='TEMPSENS_AVG', y=r'$\sigma$(Threshold) (electrons)', hue='Module', col='Ring', data=df )
+    plt.savefig(os.path.join(plot_dir, 'test_width_by_temp.pdf'), bbox_inches='tight')
+
+def plot_scurve_noise_v_temp_and_mod( df, plot_dir='./' ):
+    fg = sns.relplot( x='TEMPSENS_AVG', y='Mean Noise (electrons)', col='Module', hue='Chip', row='HV',kind='line',data=df )
+    plt.savefig(os.path.join(plot_dir, 'test_noise_by_temp_and_mod.pdf'), bbox_inches='tight')
 
 def plot_scurve_noise_v_vdd( df, vtype='dig', plot_dir='./' ):
-    fg = sns.relplot( x=f'VOUT_{vtype}_ShuLDO', y='NoiseMean_ele', hue='Module', data=df )
-    plt.savefig(os.path.join(plot_dir, f'test_noise_by_vdd{vtype}.pdf'))
+    fg = sns.relplot( x=f'VOUT_{vtype}_ShuLDO', y='Mean Noise (electrons)', hue='Module', data=df )
+    plt.savefig(os.path.join(plot_dir, f'test_noise_by_vdd{vtype}.pdf'), bbox_inches='tight')
 
-def plot_scurve_masked_pix_by_temp( df, vtype='dig', plot_dir='./' ):
-    df['TEMPSENS_AVG'] = (df['TEMPSENS_1'] + df['TEMPSENS_2'] + df['TEMPSENS_3'] + df['TEMPSENS_4'])/4
-    fg = sns.relplot( x='TEMPSENS_AVG', y='InitMaskedPix', col='TargetThreshold_ele', hue='Module', data=df )
-    plt.savefig(os.path.join(plot_dir,'test_masked_pix_by_temp.pdf'))
+
+def get_hv_from_name( df ):
+
+    name = df['Name']
+    splits = name.split('_')
+    voltage = 0
+    for split in splits:
+        if split.endswith('V'):
+            
+            voltage = int(split.rstrip('V').replace('minus','-'))
+            break
+    return voltage
+
+def get_ambientT_from_name(df ):
+    name = df['Name']
+    splits = name.split('_')
+    temp = -50
+    for split in splits:
+        if split.endswith('amb'):
+            temp = int(split.rstrip('amb').replace('minus','-'))
+            break
+    return temp
+
+def plot_scurve_masked_pix_by_temp( df, plot_dir='./' ):
+    df['Masked Pixels'] = df['InitMaskedPix']
+    fg = sns.relplot( x='TEMPSENS_AVG', y='Masked Pixels', col='Target Threshold (electrons)', hue='Module', row='HV', data=df )
+    plt.savefig(os.path.join(plot_dir,'test_masked_pix_by_temp.pdf'), bbox_inches='tight')
+
+def plot_scurve_masked_pix_by_threshold( df, plot_dir='./'):
+    df = df[ df['Ambient Temperature'] == -50 ]
+    #df = df[ (~df['Module'].isin(['modT03','modT09']) ) | (df['HV'] == -50) ]
+    df = df[ (~df['Module'].str.contains('Sensor') ) | (df['HV'] == -50) ]
+    df['Masked Pixels'] = df['InitMaskedPix']
+    fg = sns.relplot( x='Target Threshold (electrons)',y='Masked Pixels',col='Ambient Temperature', hue='Module', data=df)
+    plt.savefig(os.path.join(plot_dir, 'test_masked_pix_by_target.pdf'), bbox_inches='tight')
+
+def plot_scurve_masked_pix_by_threshold_and_mod( df, plot_dir='./'):
+    #df = df[ (~df['Module'].isin(['modT03','modT09']) ) | (df['HV'] == -50) ]
+    df = df[ (~df['Module'].str.contains('Sensor') ) | (df['HV'] == -50) ]
+    df['Masked Pixels'] = df['InitMaskedPix']
+    fg = sns.relplot( x='Target Threshold (electrons)',y='Masked Pixels',col='Module', hue='Chip', col_wrap=4, kind='line', ci=None, data=df)
+    plt.savefig(os.path.join(plot_dir, 'test_masked_pix_by_target_and_mod.pdf'), bbox_inches='tight')
+
+def plot_scurve_masked_pix_by_threshold_mod_and_ring( df, plot_dir='./'):
+    #df = df[ (~df['Module'].isin(['modT03','modT09']) ) | (df['HV'] == -50) ]
+    df = df[ (~df['Module'].str.contains('Sensor') ) | (df['HV'] == -50) ]
+    df['Masked Pixels'] = df['InitMaskedPix']
+    fg = sns.relplot( x='Target Threshold (electrons)',y='Masked Pixels',col='Module', hue='Ring', style='Chip', col_wrap=4, kind='line', ci=None, data=df)
+    plt.savefig(os.path.join(plot_dir, 'test_masked_pix_by_target_and_mod_and_ring.pdf'), bbox_inches='tight')
 
 def plot_temp_correlations(df, plot_dir='./'):
     for sens_no in ['1','2','3','4']:
         df[f'tdiff_{sens_no}'] = df['TEMPSENS_2'] - df[f'TEMPSENS_{sens_no}']
     fg = sns.pairplot( df[['tdiff_1','tdiff_2','tdiff_3','tdiff_4']])
-    plt.savefig(os.path.join(plot_dir,'test_temperature_sensor_correlations.pdf'))
+    plt.savefig(os.path.join(plot_dir,'test_temperature_sensor_correlations.pdf'), bbox_inches='tight')
+
+def plot_temp_by_ambient_and_module(df, plot_dir='./'):
+    fg = sns.catplot( x='Ambient Temperature', y='TEMPSENS_AVG', hue='Ring', col='Module', data=df)
+    plt.savefig(os.path.join(plot_dir, 'test_mod_temp_by_ambient_and_pos.pdf'), bbox_inches='tight')
+
+
+def plot_vddd_vdda_by_ring( df, plot_dir='./'):
+    fg = sns.relplot( x=f'VOUT_dig_ShuLDO', y='VOUT_ana_ShuLDO', hue='Ring', data=df )
+    plt.savefig( os.path.join(plot_dir, 'test_mod_vddd_vs_ring.pdf'), bbox_inches='tight')
+
+def plot_temp_by_ambient(df, plot_dir='./'):
+    fg = sns.catplot( x='Ambient Temperature', y='Measured Chip Temperature', hue='Ring', data=df)
+    plt.savefig(os.path.join(plot_dir, 'test_mod_temp_by_ambient.pdf'), bbox_inches='tight')
+
+def plot_scurve_threshold_by_target(df, plot_dir='./'):
+    fg = sns.catplot( x='Target Threshold (electrons)', y='Mean Threshold (electrons)', hue='Ring', data=df)
+    plt.savefig(os.path.join(plot_dir, 'test_mod_threshold_by_target.pdf'), bbox_inches='tight')
 
 def plot_scurve_noise_by_module( df, plot_dir='./'):
-    fg = sns.catplot( x='Ring', y='NoiseMean_ele', col='Module', hue='Name', data=df )
-    plt.savefig(os.path.join(plot_dir,'test_noise_by_mod_and_name.pdf'))
+    fg = sns.catplot( x='Ring', y='Mean Noise (electrons)', col='Module', hue='Name', data=df )
+    plt.savefig(os.path.join(plot_dir,'test_noise_by_mod_and_name.pdf'), bbox_inches='tight')
+
+def plot_scurve_noise_by_module( df, plot_dir='./'):
+    fg = sns.catplot( x='Ring', y='Mean Noise (electrons)', col='Module', hue='Name', data=df )
+    plt.savefig(os.path.join(plot_dir,'test_noise_by_mod_and_name.pdf'), bbox_inches='tight')
 
 def plot_scurve_width( df, plot_dir='./'):
-    fg = sns.catplot( x='Module', y='ThresholdStdDev_ele', hue='Ring', data=df )
-    plt.savefig(os.path.join(plot_dir,'test_threshold_dispersion_by_mod.pdf'))
+    #df = df[ (~df['Module'].isin(['modT03','modT09']) ) | (df['HV'] == -50) ]
+    df = df[ (~df['Module'].str.contains('Sensor') ) | (df['HV'] == -50) ]
+    fg = sns.catplot( x='Module', y=r'$\sigma$(Threshold) (electrons)', hue='Ring', data=df )
+    fg.set_xticklabels(labels=fg.axes[-1][-1].get_xticklabels(), rotation=25, horizontalalignment='right')
+    plt.savefig(os.path.join(plot_dir,'test_threshold_dispersion_by_mod.pdf'), bbox_inches='tight')
+
+def plot_scurve_masked_pix( df, plot_dir='./'):
+    #df = df[ (~df['Module'].isin(['modT03','modT09']) ) | (df['HV'] == -50) ]
+    df = df[ (~df['Module'].str.contains('Sensor') ) | (df['HV'] == -50) ]
+    df = df[ df['Ambient Temperature'] == -50 ]
+    df['Masked Pixels'] = df['InitMaskedPix']
+    fg = sns.catplot( x='Module', y='Masked Pixels', hue='Ring', col='Target Threshold (electrons)', data=df )
+    fg.set_xticklabels(labels=fg.axes[-1][-1].get_xticklabels(), rotation=25, horizontalalignment='right')
+    plt.savefig(os.path.join(plot_dir,'test_threshold_masked_pix_by_mod.pdf'), bbox_inches='tight')
 
 def plot_scurve_target_difference( df, plot_dir='./' ):
     df['ThresholdDiff'] = df['ThresholdMean_ele'] - df['TargetThreshold_ele']
     fg = sns.catplot( x='Module', y='ThresholdDiff', hue='Ring', data=df)
-    plt.savefig(os.path.join(plot_dir, 'test_threshold_difference_from_target.pdf'))
+    fg.set_xticklabels(labels=fg.axes[-1][-1].get_xticklabels(), rotation=25, horizontalalignment='right')
+    plt.savefig(os.path.join(plot_dir, 'test_threshold_difference_from_target.pdf'), bbox_inches='tight')
+
+def get_generic_module_name( df ):
+
+    module_name_dict = { 'modT03':'Sensor Module 1',
+                         'modT09':'Sensor Module 2',
+                         'mod7':'Digital Module 1',
+                         'mod9':'Digital Module 2',
+                         'mod10':'Digital Module 3',
+                         'mod11':'Digital Module 4',
+                         'mod12':'Digital Module 5' }
+    module = df['Module']
+    return module_name_dict[module]
 
 def plot_scurve_summaries( scurve_df, plot_dir='plots/scurves' ):
 
@@ -284,18 +399,67 @@ def plot_scurve_summaries( scurve_df, plot_dir='plots/scurves' ):
         os.mkdir(plot_dir)
 
     scurve_df = scurve_df[ ~(scurve_df['Module'] == 'modT14') ] #should find a better way to exclude this
+    scurve_df['Module'] = scurve_df.apply( lambda x: get_generic_module_name(x), axis=1 )
+    scurve_df['HV'] = scurve_df.apply( lambda x: get_hv_from_name(x), axis=1 )
+    scurve_df['Ambient Temperature'] = scurve_df.apply( lambda x: get_ambientT_from_name(x), axis=1)
+    scurve_df['TEMPSENS_AVG'] = (scurve_df['TEMPSENS_1'] + scurve_df['TEMPSENS_2'] + scurve_df['TEMPSENS_3'] + scurve_df['TEMPSENS_4'])/4
+    scurve_df['Measured Chip Temperature'] = scurve_df['TEMPSENS_AVG']
+    scurve_df['Mean Noise (electrons)'] = scurve_df['NoiseMean_ele']
+    scurve_df[r'$\sigma$(Threshold) (electrons)'] = scurve_df['ThresholdStdDev_ele']
+    scurve_df['Target Threshold (electrons)'] = scurve_df['TargetThreshold_ele']
+    scurve_df['Mean Threshold (electrons)'] = scurve_df['ThresholdMean_ele']
+    #scurve_df = scurve_df[ scurve_df['TargetThreshold_ele'] == 1500 ]
+    #scurve_df = scurve_df[ scurve_df['Ambient Temperature'] == -50 ]
     plot_scurve_noise(scurve_df, plot_dir)
     plot_scurve_noise_by_module(scurve_df, plot_dir,)
     plot_scurve_width(scurve_df, plot_dir)
     plot_scurve_target_difference( scurve_df, plot_dir)
+    plot_scurve_threshold_by_target(scurve_df, plot_dir)
+    plot_scurve_masked_pix_by_temp(scurve_df, plot_dir)
     plot_scurve_noise_v_temp( scurve_df, plot_dir )
+    plot_scurve_noise_v_temp_and_mod( scurve_df, plot_dir )
+    plot_scurve_masked_pix(scurve_df, plot_dir )
     plot_temp_correlations( scurve_df,plot_dir )
-    plot_scurve_masked_pix_by_temp( scurve_df, plot_dir )
+    plot_scurve_masked_pix_v_temp( scurve_df, plot_dir )
+    plot_scurve_masked_pix_by_threshold(scurve_df, plot_dir )
+    plot_scurve_masked_pix_by_threshold_and_mod(scurve_df, plot_dir )
+    plot_scurve_masked_pix_by_threshold_mod_and_ring(scurve_df, plot_dir)
+    plot_temp_by_ambient_and_module(scurve_df, plot_dir)
+    plot_temp_by_ambient(scurve_df, plot_dir)
+    plot_scurve_width_v_temp(scurve_df, plot_dir) 
+    plot_vddd_vdda_by_ring( scurve_df, plot_dir)
     plot_scurve_noise_v_vdd( scurve_df, vtype='dig', plot_dir=plot_dir )
     plot_scurve_noise_v_vdd( scurve_df, vtype='ana',plot_dir=plot_dir )
     
 
-def plot_scurve_results(runnr, module_per_id, plotfoldername='plots/thresholds/', tag=''):
+class NoUniqueMaskedPixValuesError(Exception):
+    pass
+
+def get_masked_pixels(runnr, moduleId, chip, df):
+
+    sel_df = df[ ( df['RunNumber'] == runnr ) & ( df['Port'] == int(moduleId) ) & ( df['Chip'] == int(chip) ) ]
+    values = sel_df['InitMaskedPix'].unique()
+    if not len(values) == 1:
+        raise NoUniqueMaskedPixValuesError(f'''Expected exactly one value of InitMaskedPix with run number {runnr}, module {moduleId} and chip {chip}, but found {len(values)}, the dataframe is {sel_df}''')
+    return values[0]
+
+def get_module_name(runnr, moduleId, chip, df):
+
+    sel_df = df[ ( df['RunNumber'] == runnr ) & ( df['Port'] == int(moduleId) ) & ( df['Chip'] == int(chip) ) ]
+    values = sel_df['Module'].unique()
+    if not len(values) == 1:
+        raise NoUniqueMaskedPixValuesError(f'''Expected exactly one value of Module Name with run number {runnr}, module {moduleId} and chip {chip}, but found {len(values)}, the dataframe is {sel_df}''')
+    return values[0]
+
+def get_position(runnr, moduleId, chip, df):
+
+    sel_df = df[ ( df['RunNumber'] == runnr ) & ( df['Port'] == int(moduleId) ) & ( df['Chip'] == int(chip) ) ]
+    values = sel_df['Ring'].unique()
+    if not len(values) == 1:
+        raise NoUniqueMaskedPixValuesError(f'''Expected exactly one value of Module Name with run number {runnr}, module {moduleId} and chip {chip}, but found {len(values)}, the dataframe is {sel_df}''')
+    return values[0]
+
+def plot_scurve_results(runnr, module_per_id, plotfoldername='plots/thresholds/', tag='', tuning_db=None):
     ROOT.gROOT.SetBatch(True)
     
     runnrstr = '%06i' % runnr
@@ -304,6 +468,9 @@ def plot_scurve_results(runnr, module_per_id, plotfoldername='plots/thresholds/'
     matches = glob.glob(infilepattern)
     if len(matches) > 1:
         raise ValueError('Trying to plot histograms in rootfile for runnr. %i, but there is more than one file found with the pattern \'Run%s_*.root\': '% (runnrstr) + matches )
+    elif len(matches) < 1:
+        infilepattern = f'archive/{runnr}/Results/Run{runnr:06d}_*.root'
+        matches = glob.glob(infilepattern)
     infilename = matches[0]
     
     infile = ROOT.TFile(infilename, 'READ')
@@ -326,6 +493,15 @@ def plot_scurve_results(runnr, module_per_id, plotfoldername='plots/thresholds/'
             fullhistpath = os.path.join(histpath, chip)
             infile.cd()
             infile.cd(fullhistpath)
+            nmasked_pix = None
+            module_name = module
+            ring = ''
+            if not tuning_db is None:
+                df = tuning_db.get_info()
+                chipId = chip.replace('Chip_','')
+                nmasked_pix = get_masked_pixels( runnr, moduleid, chipId,df)
+                module_name = get_module_name( runnr, moduleid, chipId,df)
+                ring  = get_position( runnr, moduleid, chipId,df)
             
             canvases = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]
             infile.cd()
@@ -333,14 +509,29 @@ def plot_scurve_results(runnr, module_per_id, plotfoldername='plots/thresholds/'
                 if canvasname == 'Channel': continue
                 canvas = infile.Get(os.path.join(fullhistpath, canvasname))
                 hist   = canvas.GetPrimitive(canvasname)
-                canvastitle = canvasname.split('_')[4] + '_' + chip
-                outcanvas = ROOT.TCanvas('c', canvastitle, 500, 500)
+                plot_type = canvasname.split('_')[4]
+                canvastitle = plot_type + '_' + chip
+                hist.SetTitle(f'{plot_type}: {module_name} {chip.replace("_","")} - Ring:{ring}')
+                outcanvas = ROOT.TCanvas('c', canvastitle, 650, 500)
                 if 'SCurves' in canvastitle:
                     ROOT.gPad.SetLogz()
                 hist.Draw('colz')
+                if ( ('SCurves' in canvastitle) or ('1D' in canvastitle) ) and not (nmasked_pix is None):
+                  latex = ROOT.TLatex()
+                  latex.SetTextSize( latex.GetTextSize()*0.65)
+                  latex.DrawLatexNDC( 0.5,0.2,f'Masked Pixels = {nmasked_pix:.0f}')
+                if '1D' in canvastitle:
+                  hist.GetYaxis().SetTitle('Channels')
+                  
+                for prim in canvas.GetListOfPrimitives():
+                    if isinstance( prim, ROOT.TGaxis ):
+                        prim.SetTitleOffset(-1)
+                        prim.SetTitle(f'{prim.GetTitle()}   ')
+                        prim.SetTitleColor(ROOT.kRed)
+                        prim.Draw()
                 ROOT.gStyle.SetOptStat(0);
                 outdir = os.path.join(plotfoldername, '')
-                outfilename = canvastitle  + tag + '_' + runnrstr + '.pdf'
+                outfilename = canvastitle  + tag + '_' + module_name + '_' + runnrstr + '.pdf'
                 #outfilename = outfilename.replace('Chip_', '%s_chip' % (modulename))
                 ensureDirectory(outdir)
                 outcanvas.SaveAs(outdir + outfilename)
@@ -353,6 +544,7 @@ def merge_scurve_and_tuning_df( scurve_df, tuning_df ):
 
 if __name__=='__main__':
 
+    sns.set_palette('hls',8)
     ber_variables = ['TAP0','TAP1','TAP2','Module','Chip']
     parser = argparse.ArgumentParser(description='Print most recent entries in the database')
     parser.add_argument('--db', dest='database', type=str, default='ber_db/ber.json',
@@ -368,6 +560,7 @@ if __name__=='__main__':
     parser.add_argument('--ring', type=str, default='R1', choices=['R1', 'R3', 'R5'], help='Ring to plot summary of. [default %(default)s]')
     parser.add_argument('--do-size', action='store_true', default=False, help='Scale line size to the number of frames in the scan when doing summary plots. [default %(default)s]')
     parser.add_argument('--scurve-summary', action='store_true', default=False, help='Plot SCurve summary plots from the scurve and tuning databases')
+    parser.add_argument('--plot-tuning', type=int, default=None, help='Plot SCurve plots for a given run number [default %(default)s]')
     
     args = parser.parse_args()
     db_fname = args.database
@@ -384,6 +577,9 @@ if __name__=='__main__':
         scurve_df = merge_scurve_and_tuning_df( scurve_df, tuning_df )
         print(scurve_df)
         plot_scurve_summaries(scurve_df)
+    elif not args.plot_tuning is None:
+        tuning_db = tdb.TuningDataBase('tuning_db/tuning.json')
+        plot_scurve_results( args.plot_tuning, 'dummy', plotfoldername=f'./plots/tuning_run_{args.plot_tuning}/', tuning_db=tuning_db)
 
     elif args.summary:
         plot_ber_vs_tap(db, ring = args.ring, min_frames = args.min_frames, do_size=args.do_size)
@@ -397,3 +593,4 @@ if __name__=='__main__':
             if args.ygrid == 'None':
                 args.ygrid = None
             plot_all_ber_from_scan(db, scan_number, group_on=args.group_on, grid=[args.xgrid, args.ygrid])
+    
