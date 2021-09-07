@@ -171,7 +171,6 @@ def make_ber_heatmap(  pivots, **kwargs ):
     
     return ax
 
-
 def plot_voltages_from_scan( db, scan_index, xval='TAP0', plotdir='plots/voltages'):
     '''Make a grid of Scatter plots of VDDD and VDDA values from a scan'''
 
@@ -483,7 +482,7 @@ def plot_scurve_results(runnr, module_per_id, plotfoldername='plots/thresholds/'
     for module in modules:
         histpath = foldername + module
         moduleid = int(module.replace('Hybrid_', ''))
-        #modulename = module_per_id[moduleid]
+        modulename = module_per_id[moduleid]
         infile.cd()
         infile.cd(histpath)
         chips = [key.GetName() for key in ROOT.gDirectory.GetListOfKeys()]

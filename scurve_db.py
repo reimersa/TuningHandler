@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from mark_tuning_as_good import Archive
 from root_reader import RootScanResult
@@ -9,6 +9,7 @@ from XMLInfo import ArchivedXMLInfo, XMLInfo
 import argparse 
 
 import os
+import glob
 
 def get_xml_filename(run_number, ring, module, scan_type, archive_dir='archive/'):
     archive = Archive(archive_dir)
@@ -21,7 +22,11 @@ def get_xml_filename(run_number, ring, module, scan_type, archive_dir='archive/'
     
 
 def get_missing_ports(run_number, module, scan_type, archive):
-    xml_info = ArchivedXMLInfo(run_number, scan_type, archive.results_dir(run_number))
+    search_string =  os.path.join('Results', f'Run{run_number:06d}_*.xml') 
+    files = glob.glob(search_string)
+    if not len(files) == 1:
+        raise ValueError(f'Found {len(files)} files, expected 1, for search string {search_string}')
+    xml_info = XMLInfo(files[0]) #ArchivedXMLInfo(run_number, scan_type, archive.results_dir(run_number))
     module_data = xml_info.get_module_info()
     return module_data[module]['hybridId']
 
@@ -82,9 +87,8 @@ def update_tuning_db_ports( archive_dir, tuning_db):
     tuning_db = TuningDataBase(tuning_db)
 
     tdb_df = tuning_db.get_info()
-    tdb_df = keep_only_archived_scurves( tdb_df )
     tdb_df = add_missing_hybrid_entries( tdb_df, archive )
-    print(tdb_df)
+    tuning_db.overwrite_all( tdb_df )
 
 def fill_db( archive_dir, tuning_db, scurve_db ):
     archive = Archive(archive_dir) 
@@ -128,11 +132,11 @@ if __name__=='__main__':
     parser.add_argument('--tuning-db', default='tuning_db/tuning.json', help='Database file for general tuning. [default: %(default)s]')
     parser.add_argument('--scurve-db', default='tuning_db/scurves.json', help='Database file with scurve specific information. [default: %(default)s]')
     parser.add_argument('--archive',dest='archive_dir', default='archive/', help='Directory for archiving relevant files. [default: %(default)s]')
-    parser.add_argument('--update-ports', action="store_true", default=False, help='Extract the module to port mapping from xml files and use it to update missing entries in the tuning database')
+    #parser.add_argument('--update-ports', action="store_true", default=False, help='Extract the module to port mapping from xml files and use it to update missing entries in the tuning database')
     
     args = parser.parse_args()
     if args.update:
         fill_db(args.archive_dir, args.tuning_db, args.scurve_db )
-    elif args.update_ports: 
-        update_tuning_db_ports(args.archive_dir, args.tuning_db )
+    #elif args.update_ports: 
+    #    update_tuning_db_ports(args.archive_dir, args.tuning_db )
 

@@ -45,52 +45,44 @@ modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12',
 
 
 ids_and_chips_per_module_R1 = {
-    #'mod10': (3, [0,1,2]), 
-    #'mod12': (4, [0, 1, 2]),
-    'mod9' : ( 3, [0,1,2]),
-    'modT03' : (4, [0,1,2]),
-    'mod10' : (2, [0,1,2]),
-    'mod7': (0,  [ 1, 2]),
-    #'mod10': (0, [1, 2]),
-    #'mod12' : (1, [0, 1, 2] )
-    'mod11': (1, [0, 1, 2]), #new
+    'modT09'  : (4, [0,2]   ),
+    'mod10' : (3, [0,2]   ),
+    'mod6' : (2, [0,2] ), 
+    'mod12' : (1, [0,1] ),
+    'modT03': (0, [1]       )
 }
 
 positions_per_module_R1 = OrderedDict({ #OrderedDict keeps initialization order for python 3.6+
-    'mod11':  'R15',
-    'mod7':   'R14',
-    'mod10':  'R13',
-    'modT03': 'R12',
-    'mod9':   'R11'
+    'modT09': 'R11',
+    'mod10':  'R12',
+    'mod6':  'R13',
+    'mod12':  'R14',
+    'modT03': 'R15'
 })
 
 
 ids_and_chips_per_module_R3 = {
-    #'modT09': (1, [3]),  #checked
-    #'mod9':   (3, [3]), #checked
-    'mod11':  (6, [3]), #checked
-    #'mod7': (4, [3]), #cheked
-    'mod12':  (5,[3]),#checked
-    #'mod10':  (7, [3]), #checked
+    'mod11':  (6, [3]), 
+    'mod12':  (5,[3]),
 }
 positions_per_module_R3 = {
-    #'modT09': 'R35', #checked
-    'mod9':   'R31', #checked
-    'mod11':  'R38', #checked
-    'mod7':   'R37', #checked
-    'mod12':  'R39', #checked
-    'mod10':  'R36', #checked
+    'mod9':   'R31', 
+    'mod11':  'R38',
+    'mod7':   'R37',
+    'mod12':  'R39',
+    'mod10':  'R36'
 }
 
 
 ids_and_chips_per_module_SAB = {
-    #'mod7': (1, [3])
-    'mod10': (0, [0, 1, 2, 3])
+    'modT01': (1, [0,1])
 }
         
 #A dictionary of different scans with settings which are (TAP0 list, TAP1 list, TAP2 list).
 ber_scan_types = { 'TAP0'   : ( [1000,900,800,700,600,500,400,300,200],[0],[0] ),
                'Single' : ( [1000], [0], [0] ),
+               'Island' : ( [1000,900,800,700,600,500,400,300,200],[0, -120],[0] ),
+               'MiniFull' : ( [1000,900,800,700,600,500,400,300,200],[120,0, -120],[120,0,-120] ),
                'Full'   : ( [1000,900,800,700,600,500,400,300,200],[-120,-80,-40,0,40,80,120],[-120,-80,-40,0,40,80,120])
              }
         
@@ -119,7 +111,7 @@ def get_scan_taps( scan_name ):
         raise KeyError(f'''Could not find scan by name of {scan_name} in the list of scan types. 
                         Known scans are {ber_scan_types.keys()}''')
 
-def setup_and_run_ber( run_time=3, ring_id='R1', test_only=False, scan_type='TAP0' ):
+def setup_and_run_ber( run_time=3, ring_id='R1', test_only=False, scan_type='TAP0', other_chip_mode='AURORA' ):
 
     if ring_id == 'singleQuad': 
         ids_and_chips = ids_and_chips_per_module_SAB
@@ -171,7 +163,7 @@ def setup_and_run_ber( run_time=3, ring_id='R1', test_only=False, scan_type='TAP
                               tap_settings_per_module_and_chip = tap_settings_per_module_and_chip, 
                               mylogfolder = logfolder_for_ber, 
                               value=run_time, 
-                             db=db)
+                             db=db, other_chip_mode=other_chip_mode)
     print(f'Finished Scan {last_index}')
     
 
@@ -422,7 +414,7 @@ def run_calibration(ring, module, calib, logfolder='log/', db=None):
             for chip in mod_info['chips']:
                 pos = get_module_position(mod, ring)
                 scan_info =  {'ScanIndex': scan_index, 'ScanType': calib, 'Ring': ring, 
-                        'Pos': pos, 'RunNumber':run_number, 'Module':mod, 'Chip': chip, 'start_time':start_time, 'start_time_human':get_human_time(start_time), 'IsArchived':False} 
+                        'Pos': pos, 'Port': hybrid_id, 'RunNumber':run_number, 'Module':mod, 'Chip': chip, 'start_time':start_time, 'start_time_human':get_human_time(start_time), 'IsArchived':False} 
                 calib_info = read_calibration_log( chip, logfilename, hybrid=hybrid_id )
                 scan_info.update(calib_info)
                 chip_temps_and_voltages = temps_and_voltages[hybrid_id][chip]
@@ -645,8 +637,30 @@ def get_num_settings( tap_settings ):
             n_settings += len(settings_list)
     return n_settings
     
+class UnknownDataModeForOtherChipsException(Exception):
+	pass
 
-def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_settings_per_module_and_chip, mylogfolder, mode='time', value=10, db=None):
+class SerializerMode:
+    _chip_modes_dct = { 'AURORA':'1', 'PRBS':'2', 'GND':'3', 'SER_CLK':'0' }
+    def __init__(self, mode):
+        if not mode in self._chip_modes_dct:
+            raise UnknownDataModeForOtherChipsException(f'''Data Mode for other chips during BER scan was requested as {mode},
+this mode is unknown, the value should be one of {self._chip_modes_dct.keys()}''')	
+        self._mode = mode
+	
+    def name(self):
+        return self._mode
+		
+    def value(self):
+        return self._chip_modes_dct[self._mode]
+	
+    @classmethod
+    def list_modes(cls):
+        return list(cls._chip_modes_dct.keys())
+		
+
+def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_settings_per_module_and_chip, mylogfolder, mode='time', value=10, db=None, other_chip_mode='AURORA'):
+
 
     n_settings = get_num_settings(tap_settings_per_module_and_chip) 
     settings_are_correct = confirm_settings( modules, chips_per_module, ring, positions_per_module, n_settings, value, db)
@@ -669,6 +683,40 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
 
     module_info = modules
     modules = modules.keys()
+
+
+    ### begin hack: here set the SER_SEL_OUT of all chips on all modules (that are going to be used for the BER test) to 3 = GND  (or 1 = AURORA).
+    
+
+    if ring == 'singleQuad':
+        if not len(modules) == 1:
+            raise AttributeError('Trying to run BER in singleQuad mode with mode than one module')
+        xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_%s_%s_%s.xml' % (ring, modules[0], 'ber'))
+        reset_singleQuad_xml_files(type='ber', modules=modules, chips = chips_per_module[modules[0]])
+        prepare_singleQuad_xml_files(type_name='ber', type_setting='scurve', modules=module_info)
+    elif ring == 'R1':
+        xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_disk%s_%s.xml' % (ring, 'ber'))
+        reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R1, ring)
+    elif ring == 'R3':
+        xmlfile_for_ber = os.path.join(xmlfolder, 'CMSIT_disk%s_%s.xml' % (ring, 'ber'))
+        reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R3, ring)
+    xmlobject = XMLInfo(xmlfile_for_ber)
+
+    ### set SER_SEL_OUT to GND for all modules we will cycle through
+    ### default: 1 = aurora, now 3 = GND
+    
+    for m in modules:
+        for c in chips_per_module[m]:
+            #print(f'setting serselout for mod {m} chip {c}')
+            xmlobject.set_chip_setting_by_modulename(m, c, 'SER_SEL_OUT', SerializerMode(other_chip_mode).value())
+    xmlobject.save_xml_as(xmlfile_for_ber)
+    command_program = f'CMSITminiDAQ -f {xmlfile_for_ber} -p' 
+    os.system(command_program)
+
+    ### end hack
+
+    
+    
     for moduleidx, module in enumerate(modules):
         for chip in chips_per_module[module]:
             tap_settings = tap_settings_per_module_and_chip[module][chip]
@@ -687,6 +735,7 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
                 reset_and_prepare_Ring_xml_file('ber', 'scurve', ids_and_chips_per_module_R3, ring)
             xmlobject = XMLInfo(xmlfile_for_ber)
             print( module, chip)
+            
             xmlobject.keep_only_modules_by_modulename([module])
             xmlobject.keep_only_chips_by_modulename(module, [chip])
 
@@ -759,6 +808,13 @@ def run_ber_scan(modules, chips_per_module, ring, positions_per_module, tap_sett
                     db.add_data( [ run_info ] )
                     db.update()
 
+            ### hack begin: here, need to reset the SER_SEL_OUT of the one chip that did the BER scan back to GND = 3 (or AURORA = 1). Ph2_ACF automatically resets it to 1 = AURORA. At this point, this chip will not be used anymore, so set it to GND (or AURORA) for all the remaining runs (of other chips)
+            print(module, chip)
+            xmlobject.set_chip_setting_by_modulename(module, chip, 'SER_SEL_OUT', SerializerMode(other_chip_mode).value())
+            xmlobject.save_xml_as(xmlfile_for_ber)
+            os.system(command_program) # still the same command as above, "-f ...ber.xml -p"
+            ### hack end
+                    
     return scan_index               
         
 
@@ -892,9 +948,11 @@ if __name__ == '__main__':
     parser.add_argument('-t','--run-time', default=3, type=int, help='run time per setting in seconds. [default %(default)s]')
     parser.add_argument('--ber', action='store_true', default=False, help='run Bit Error Rate Scans [default: %(default)s]')
     parser.add_argument('--scan-type', choices=ber_scan_types.keys(), default='TAP0', help='BER Scan type (determines which TAP values to scan over. [default: %(default)s]')
+    parser.add_argument('--other-chip-mode', choices=SerializerMode.list_modes(), default='AURORA', help='Serialization modes for neighbour chips to the chip under test when performing BER scans [default: %(default)s]')
     parser.add_argument('--test', action='store_true', default=False, help='FOR BER: run in test mode - do not log any results in the database. [default: %(default)s]')
     parser.add_argument('--rst-settings', dest='reset_settings', action='store_true', default=False, help='resest all text and xml files. [default: %(default)s]')
     parser.add_argument('--rst-backend',  dest='reset_backend',  action='store_true', default=False, help='reset backend board. [default: %(default)s]')
+    parser.add_argument('--rst-xml', dest='reset_xml', action='store_true', default=False, help='reset xml files. [default: %(default)s]')
     parser.add_argument('--program',      dest='program',        action='store_true', default=False, help='run programming (CMSIT -p). [default: %(default)s]')
     parser.add_argument('--calibration',  dest='calibration',    action='store_true', default=False, help='run calibrations (physics and pixelalive). [default: %(default)s]')
     parser.add_argument('--vtuning',  dest='vtuning',    action='store_true', default=False, help='tune VDDD/A [default: %(default)s]')
@@ -904,7 +962,7 @@ if __name__ == '__main__':
     parser.add_argument('--readjust',  dest='readjust',    action='store_true', default=False, help='run the threshold tuning starting from the thradj step. Used to re-adjust thresholds, for example to lower values than in a previous scan. [default: %(default)s]')
     parser.add_argument('--thresholds',   dest='tune_thresholds', action='store_true', default=False, help='run threshold tuning. [default: %(default)s]')
     parser.add_argument('--all-scurves',  action='store_true', default=False, help='For threshold tuning: Run S-curves at all intermediate steps. [default: %(default)s]')
-    parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R3',help='Ring (or SAB) to run run the test on')
+    parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R1',help='Ring (or SAB) to run run the test on')
     parser.add_argument('-m','--mod-for-tuning', choices=modulelist, default='modT09', help='Module used for tuning. [default: %(default)s]')
     parser.add_argument('--prefix', default='default', help='Prefix to use for plotting folder name, when running threshold tuning. [defaults %(default)s]')
     args = parser.parse_args()
@@ -925,6 +983,8 @@ if __name__ == '__main__':
     if args.reset_settings:
         reset_all_settings()
         print('Done resestting all settings.\n\n')
+    elif args.reset_xml:
+    	reset_xml_files()
 
     if args.reset_backend:
         run_reset(ring=ring_id, module=mod_for_tuning)
@@ -941,7 +1001,7 @@ if __name__ == '__main__':
     if args.calibration:
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='physics', db=tuning_db)
         run_calibration(ring=ring_id, module=mod_for_tuning, calib='pixelalive', db=tuning_db)
-        run_calibration(ring=ring_id, module=mod_for_tuning, calib='scurve', db=tuning_db)
+        #run_calibration(ring=ring_id, module=mod_for_tuning, calib='scurve', db=tuning_db)
         print('Done physics and pixel alive scan.\n\n')
 
     if args.scurve:
@@ -966,5 +1026,5 @@ if __name__ == '__main__':
         print('Done threshold tuning. \n\n')
     
     if args.ber:
-        setup_and_run_ber( args.run_time, args.ring, test_only = args.test, scan_type=args.scan_type)
+        setup_and_run_ber( args.run_time, args.ring, test_only = args.test, scan_type=args.scan_type, other_chip_mode=args.other_chip_mode)
         print('Done Bit Error Rate Test.\n\n')
