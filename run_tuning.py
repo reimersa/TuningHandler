@@ -41,13 +41,14 @@ txtfile_blueprint = '/home/uzh-tepx/Ph2_ACF/settings/RD53Files/CMSIT_RD53.txt'
 
 
 chiplist = [0, 1, 2, 3]
-modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12', 'modT01', 'modT02', 'modT03', 'modT04', 'modT08', 'modT09', 'modT10','modT11', 'modT12', 'modT14']
+modulelist = ['mod3', 'mod4', 'mod6', 'mod7', 'mod9', 'mod10', 'mod11', 'mod12', 'modT01', 'modT02', 'modT03', 'modT04', 'modT08', 'modT09', 'modT10','modT11', 'modT12', 'modT14','modT17','modT18']
 
 
 ids_and_chips_per_module_R1 = {
     'modT09'  : (4, [0,2]   ),
-    'mod10' : (3, [0,2]   ),
-    'mod6' : (2, [0,2] ), 
+    'mod10' : (3, [2]   ),
+   # 'mod6' : (2, [0,2] ), 
+    #'mod6' : (2, [2] ), 
     'mod12' : (1, [0,1] ),
     'modT03': (0, [1]       )
 }
@@ -62,26 +63,40 @@ positions_per_module_R1 = OrderedDict({ #OrderedDict keeps initialization order 
 
 
 ids_and_chips_per_module_R3 = {
-    'mod11':  (6, [3]), 
-    'mod12':  (5,[3]),
+    #'mod9' :  (0, [3]), 
+    'mod11':  (2, [3]), 
+    ##'mod4':  (3, [3]), 
+    'modT09': (1, [3]), 
+    ##'mod7':   (4, [3]), 
+    'mod12':  (5, [3]), 
+    'modT03': (6, [3]),
+    #'mod10':  (7, [3])
 }
 positions_per_module_R3 = {
-    'mod9':   'R31', 
-    'mod11':  'R38',
-    'mod7':   'R37',
-    'mod12':  'R39',
-    'mod10':  'R36'
+    'mod9' :  'R31', 
+    'mod3' :  'R32',
+    'mod11':  'R33',
+    'mod4' :  'R34',
+    'modT09': 'R35',
+    'mod7' :  'R36',
+    'mod12':  'R37',
+    'modT03': 'R38',
+    'mod10':  'R39'
 }
 
 
 ids_and_chips_per_module_SAB = {
-    'modT01': (1, [0,1])
+#    'modT11': (1, [0,2,3])
+    'modT18': (1, [0,1,2,3])
+#    'modT12': (1, [0,1,2,3])
+#    'mod9': (1, [0,1,2,3])
 }
         
 #A dictionary of different scans with settings which are (TAP0 list, TAP1 list, TAP2 list).
 ber_scan_types = { 'TAP0'   : ( [1000,900,800,700,600,500,400,300,200],[0],[0] ),
                'Single' : ( [1000], [0], [0] ),
                'Island' : ( [1000,900,800,700,600,500,400,300,200],[0, -120],[0] ),
+               'HighIsland' : ([1000,900,800,700,600],[0,-120],[0] ),
                'MiniFull' : ( [1000,900,800,700,600,500,400,300,200],[120,0, -120],[120,0,-120] ),
                'Full'   : ( [1000,900,800,700,600,500,400,300,200],[-120,-80,-40,0,40,80,120],[-120,-80,-40,0,40,80,120])
              }
@@ -218,7 +233,7 @@ def confirm_settings( modules, chips, ring, positions, n_settings, value, db):
 
 def run_threshold_tuning(module, ring, plotfoldername, mode='standard', intermediate_scurves=False, db=None):
 
-    if not mode=='standard' and not mode=='readjust' and not mode=='reequalize':
+    if not mode in ['standard','readjust','reequalize','final_scurve']:
         raise AttributeError(f'Invalid mode passed to \'run_threshold_tuning\': {mode}.')
     
     
@@ -263,7 +278,7 @@ def run_threshold_tuning(module, ring, plotfoldername, mode='standard', intermed
 
 
     #### start here for readjust
-    if mode == 'standard' or mode == 'readjust':
+    if mode in ['standard','readjust']:
         reset_xml_files()
         run_calibration(ring=ring, module=module, calib='thradj',db=db)
             
@@ -280,13 +295,14 @@ def run_threshold_tuning(module, ring, plotfoldername, mode='standard', intermed
         
         
     #### start here for reequalization
-    if mode == 'standard' or mode == 'readjust' or mode == 'reequalize':
+    if mode in ['standard','readjust','reequalize']:
         reset_xml_files()
         run_calibration(ring=ring, module=module, calib='threqu',db=db)
         if intermediate_scurves:
             run_calibration(ring=ring, module=module, calib='scurve')
     
         run_calibration(ring=ring, module=module, calib='noise',db=db)
+    if mode in [ 'standard','readjust','reequalize','final_scurve']:
         run_calibration(ring=ring, module=module, calib='scurve', db=db)
     pl.plot_scurve_results(runnr=get_last_runnr(), module_per_id=module_per_id, plotfoldername=plotfoldername)
 
@@ -961,6 +977,7 @@ if __name__ == '__main__':
     parser.add_argument('--reequalize',  dest='reequalize',    action='store_true', default=False, help='run the threshold tuning starting from the threqu step. Used to re-equalize thresholds, for example if the LDAC_LIN was insufficient in the previous tuning. [default: %(default)s]')
     parser.add_argument('--readjust',  dest='readjust',    action='store_true', default=False, help='run the threshold tuning starting from the thradj step. Used to re-adjust thresholds, for example to lower values than in a previous scan. [default: %(default)s]')
     parser.add_argument('--thresholds',   dest='tune_thresholds', action='store_true', default=False, help='run threshold tuning. [default: %(default)s]')
+    parser.add_argument('--final-scurve', action='store_true', default=False, help='Run only the final scurve of threshold tuning. [default %(default)s]')
     parser.add_argument('--all-scurves',  action='store_true', default=False, help='For threshold tuning: Run S-curves at all intermediate steps. [default: %(default)s]')
     parser.add_argument('-r','--ring',    dest='ring', choices=['R1','R3','R5','singleQuad'], default='R1',help='Ring (or SAB) to run run the test on')
     parser.add_argument('-m','--mod-for-tuning', choices=modulelist, default='modT09', help='Module used for tuning. [default: %(default)s]')
@@ -1020,6 +1037,9 @@ if __name__ == '__main__':
         run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix, mode='reequalize', intermediate_scurves =  args.all_scurves, db=tuning_db)
         print('Done re-equalization tuning. \n\n')
 
+    if args.final_scurve:
+        run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix, mode='final_scurve', intermediate_scurves =  args.all_scurves, db=tuning_db)
+        print('Done re-equalization tuning. \n\n')
         
     if args.tune_thresholds:
         run_threshold_tuning(module=mod_for_tuning, ring=ring_id, plotfoldername=prefix_plotfolder+plotfolderpostfix, mode='standard', intermediate_scurves =  args.all_scurves, db=tuning_db)
