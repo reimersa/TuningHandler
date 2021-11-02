@@ -35,6 +35,7 @@ if __name__=='__main__':
     parser.add_argument('-H', dest='show_columns', action='store_true', default=False, help='List all columns in database' )
     parser.add_argument('-c', dest='columns', default=None,help='comma separated list of columns to show' )
     parser.add_argument('--list-named', dest='list_named', action='store_true',default=False, help="list the scans with names and show some overview info about them.")
+    parser.add_argument('--list-modules', dest='list_modules', action='store_true',default=False, help="list the module names that are in the db.")
     parser.add_argument('--scans', dest='scan_numbers', default=None, help='comma separated list of scan numbers to display.')
     parser.add_argument('--sel', nargs='+',type=str,help='Select by column values, using the syntax "<COLUMN>:<VALUE>"')
     
@@ -58,6 +59,9 @@ if __name__=='__main__':
             end_time   = df_name['end_time_human'].iloc[0]
             print(f'Scan "{name: <35}" - index: {int(index): >5} - start time: {start_time} - end time: {end_time} - entries: {df_name.shape[0]: >5} ')
             print('')
+        exit(0)
+    elif args.list_modules:
+        print(df['Module'].unique())
         exit(0)
     
     if args.scan_numbers is not None:
